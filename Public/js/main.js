@@ -69,4 +69,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }, observerOptions);
 
     sections.forEach(section => sectionObserver.observe(section));
+
+    // 4. One-Click Copy to Clipboard
+    const copyButtons = document.querySelectorAll('.copy-btn');
+    copyButtons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const textToCopy = btn.getAttribute('data-copy');
+            if (!textToCopy) return;
+
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span>Copied!</span>';
+                btn.classList.add('copied');
+
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('copied');
+                }, 1800);
+            } catch (err) {
+                // Fallback for older browsers / insecure origins
+                const textarea = document.createElement('textarea');
+                textarea.value = textToCopy;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    btn.innerHTML = '<span>Copied!</span>';
+                    setTimeout(() => {
+                        btn.innerHTML = '<span>Copy</span>';
+                    }, 1800);
+                } catch (e) {
+                    console.error('Copy failed:', e);
+                }
+                document.body.removeChild(textarea);
+            }
+        });
+    });
+
+    // 5. Contact Form Submission (Template Interaction)
+    const contactForm = document.getElementById('contactForm');
+    const formStatus = document.getElementById('formStatus');
+    const submitBtn = document.getElementById('contactSubmitBtn');
+
+    if (contactForm && formStatus && submitBtn) {
+        contactForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>Sending...</span>';
+            formStatus.className = 'form-status';
+            formStatus.textContent = '';
+
+            setTimeout(() => {
+                contactForm.reset();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+                formStatus.className = 'form-status success';
+                formStatus.textContent = 'Message sent! (Ready for CMS integration)';
+
+                setTimeout(() => {
+                    formStatus.textContent = '';
+                }, 4000);
+            }, 600);
+        });
+    }
 });
+
