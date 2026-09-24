@@ -1,0 +1,170 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: sans-serif;
+    background-color: black;
+    color:white;
+}
+
+:root {
+    --primary-color: #3423;
+    --secondary-color: #4564;
+}
+
+
+/* 
+    Header components design
+*/
+Header {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    padding: 1.2rem;
+    background-color: black;
+    position:fixed;
+    width: 100%;
+}
+
+Header > #logo-container > h1 {
+    font-size: 2rem;
+    font-family: fantasy;
+    color: white;
+}
+
+Header > ul, li, a {
+    text-decoration: none;
+    list-style-type: none;
+}
+
+#nav-link-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+#nav-link-container > li > .nav-link {
+    font-size: 1rem;
+    color: white;
+    padding: 0.5rem 1rem;
+}
+
+#nav-link-container > li > .nav-link:hover {
+    border-bottom: 1px solid #ccc;
+}
+
+section {
+    height: 100vh;
+    padding: 1rem 1.5rem;
+}
+
+/* Hero section */
+#hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#hero-content {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 100%;
+    width: 50%;
+}
+div > #name {
+    font-size: 6rem;
+    font-family: sans-serif;
+}
+
+div > #hero-title {
+    font-size: 1.3rem;
+    color: #727272;
+}
+
+div > #hero-desc {
+   margin-top: 1.5rem;
+   font-size: 1.3rem;
+   color:#727272;
+}
+
+#hero-nav-button {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+div > .hero-btn {
+    margin-top: 1rem;
+    padding: 1em 2em;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: large;
+}
+
+div > #projects-btn {
+    background-color: white;
+    color: black;
+    font-weight: 700;
+}
+
+div > #resume-btn {
+    font-weight: 700;
+}
+
+div > #resume-btn:hover {
+    background-color: white;
+    color: black;
+}
+
+div > #projects-btn:hover {
+    background-color: black;
+    color: white;
+}
+
+
+/* about section */
+#about {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#about > #pic-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50%;
+    height: 100%;
+}
+
+#about > #pic-container > #my-pic {
+    height: 75%;
+    width: 75%;
+    border-radius: 24px;
+}
+
+#about > #info-container {
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: start;
+    flex-direction: column;
+    border: 1px #646262 solid;
+    background-color: rgb(45, 43, 43);
+    width: 50%;
+    height: 90%;
+    border-radius: 24px;
+}
+#about > #info-container > h1 {
+    background-color: transparent;
+    font-size: 3rem;
+    margin-bottom: 2rem;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+#about > #info-container > p {
+    background-color: transparent;
+    font-size: 1.2rem;
+}
