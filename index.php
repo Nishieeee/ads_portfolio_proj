@@ -98,7 +98,9 @@ $fullName = implode(' ', $nameParts);
                 <!-- Credibility Highlights Strip -->
                 <div class="hero-proof-strip">
                     <div class="proof-item">
-                        <span class="proof-icon">🏆</span>
+                        <span class="proof-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8v4h8v-4h-1c-.55 0-1-.45-1-1v-2.34"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+                        </span>
                         <div class="proof-text">
                             <strong>Hackathon Champion</strong>
                             <small>Build With AI 2026</small>
@@ -106,7 +108,9 @@ $fullName = implode(' ', $nameParts);
                     </div>
                     <div class="proof-divider"></div>
                     <div class="proof-item">
-                        <span class="proof-icon">⚡</span>
+                        <span class="proof-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </span>
                         <div class="proof-text">
                             <strong>High-Concurrency</strong>
                             <small>Pessimistic Locks & Redis</small>
@@ -114,7 +118,9 @@ $fullName = implode(' ', $nameParts);
                     </div>
                     <div class="proof-divider"></div>
                     <div class="proof-item">
-                        <span class="proof-icon">🌐</span>
+                        <span class="proof-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </span>
                         <div class="proof-text">
                             <strong>C1 Advanced English</strong>
                             <small>EF SET Verified (70/100)</small>
@@ -136,7 +142,7 @@ $fullName = implode(' ', $nameParts);
                     <div class="about-image-card">
                         <div class="image-wrapper">
                             <img src="<?= htmlspecialchars($basicInfo['avatar_url'] ?? 'Public/assets/images/image.png') ?>" alt="<?= htmlspecialchars($fullName) ?>" id="my-pic" class="avatar-img">
-                            <div class="image-glass-card">
+                            <div class="image-caption-card">
                                 <span class="status-indicator"></span>
                                 <div>
                                     <div class="status-title">Computer Science</div>
@@ -340,7 +346,7 @@ $fullName = implode(' ', $nameParts);
                                 </div>
                                 <div class="card-sub"><?= htmlspecialchars($edu['course'] ?? '') ?></div>
                                 <?php if (!empty($edu['location'])): ?>
-                                    <div class="card-meta">📍 <?= htmlspecialchars($edu['location']) ?></div>
+                                    <div class="card-meta"><?= htmlspecialchars($edu['location']) ?></div>
                                 <?php endif; ?>
                                 <?php if (!empty($edu['focus_areas'])): ?>
                                     <div class="card-details">
@@ -406,8 +412,9 @@ $fullName = implode(' ', $nameParts);
                                 <?php elseif ($contact['contact_type'] === 'phone_no'): ?>
                                     <a href="<?= htmlspecialchars($contact['href']) ?>" class="contact-link"><?= htmlspecialchars($contact['label']) ?></a>
                                 <?php elseif ($contact['contact_type'] === 'url' && !empty($contact['href']) && $contact['href'] !== '#'): ?>
-                                    <a href="<?= htmlspecialchars($contact['href']) ?>" target="_blank" rel="noopener noreferrer" class="contact-link">
-                                        <?= htmlspecialchars($contact['label']) ?> ↗
+                                    <a href="<?= htmlspecialchars($contact['href']) ?>" target="_blank" rel="noopener noreferrer" class="contact-link inline-flex-link">
+                                        <span><?= htmlspecialchars($contact['label']) ?></span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
                                     </a>
                                 <?php else: ?>
                                     <span class="contact-text"><?= htmlspecialchars($contact['label']) ?></span>
