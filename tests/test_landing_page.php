@@ -41,6 +41,7 @@ assertCheck("Header navigation exists", str_contains($html, 'id="header_main"'))
 assertCheck("Dynamic projects section rendered", str_contains($html, 'id="projects"'));
 assertCheck("Dynamic skills section rendered", str_contains($html, 'id="skills"'));
 assertCheck("Dynamic about section rendered", str_contains($html, 'id="about"'));
+assertCheck("About section contains #aboutProjectCounter element", str_contains($html, 'id="aboutProjectCounter"'));
 assertCheck("Dynamic experience section rendered", str_contains($html, 'id="experience"'));
 assertCheck("Dynamic education section rendered", str_contains($html, 'id="education"'));
 assertCheck("Dynamic contact section rendered", str_contains($html, 'id="contact"'));

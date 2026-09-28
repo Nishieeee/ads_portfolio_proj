@@ -4,6 +4,15 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Dynamic REST API Base URL
+    const API_BASE = (() => {
+        let path = window.location.pathname;
+        if (path.endsWith('.php') || path.endsWith('.html')) {
+            path = path.substring(0, path.lastIndexOf('/'));
+        }
+        return path.replace(/\/+$/, '') + '/api';
+    })();
+
     const header = document.getElementById('header_main');
     const navToggle = document.getElementById('navToggle');
     const navContainer = document.getElementById('nav-container');
@@ -115,15 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitBtn = document.getElementById('contactSubmitBtn');
 
     if (contactForm && formStatus && submitBtn) {
-        // Resolve dynamic API Base URL
-        const API_BASE = (() => {
-            let path = window.location.pathname;
-            if (path.endsWith('.php') || path.endsWith('.html')) {
-                path = path.substring(0, path.lastIndexOf('/'));
-            }
-            return path.replace(/\/+$/, '') + '/api';
-        })();
-
         contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -202,6 +202,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.innerHTML = originalBtnHtml;
             }
         });
+    }
+
+    // 6. Dynamic Project Counter via REST API (GET /api/projects)
+    const projectCounterEl = document.getElementById('aboutProjectCounter');
+    if (projectCounterEl) {
+        (async () => {
+            try {
+                const response = await fetch(`${API_BASE}/projects`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const result = await response.json().catch(() => null);
+
+                if (response.ok && result && result.status === 'success' && Array.isArray(result.data)) {
+                    const target = result.data.length;
+
+                    // Smooth animated count-up
+                    const duration = 1000;
+                    const startTime = performance.now();
+                    const startValue = 0;
+
+                    const animateCounter = (now) => {
+                        const elapsed = now - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        const easeOut = 1 - Math.pow(1 - progress, 3);
+                        const current = Math.floor(startValue + (target - startValue) * easeOut);
+
+                        projectCounterEl.textContent = `${current}+`;
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animateCounter);
+                        } else {
+                            projectCounterEl.textContent = `${target}+`;
+                        }
+                    };
+
+                    requestAnimationFrame(animateCounter);
+                }
+            } catch (err) {
+                console.warn('Dynamic project counter fetch failed, preserving server-rendered fallback:', err);
+            }
+        })();
     }
 });
 

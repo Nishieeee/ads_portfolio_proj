@@ -48,7 +48,7 @@ $title = !empty($sec['title']) ? $sec['title'] : 'About Me';
                         <span class="fact-label">Hackathon Winner</span>
                     </div>
                     <div class="fact-box">
-                        <span class="fact-number">5+</span>
+                        <span class="fact-number" id="aboutProjectCounter"><?= count($projects ?? []) ?>+</span>
                         <span class="fact-label">Full-Stack Projects</span>
                     </div>
                     <div class="fact-box">
