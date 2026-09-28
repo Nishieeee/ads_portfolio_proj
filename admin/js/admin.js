@@ -230,6 +230,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    const escapeHtml = (str) => {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    };
+
+    /**
+     * Universal Delete Confirmation Modal Handler
+     * Opens #deleteConfirmModal, displays dynamic title/message, and executes async onConfirm
+     *
+     * @param {Object} options
+     * @param {string} options.title - Modal title (e.g. "Delete Project")
+     * @param {string} options.message - Confirmation HTML message
+     * @param {Function} options.onConfirm - Async function to execute on confirmation
+     */
+    const openDeleteModal = ({ title = 'Confirm Deletion', message = 'Are you sure you want to delete this item?', onConfirm }) => {
+        const modal = document.getElementById('deleteConfirmModal');
+        const titleEl = document.getElementById('deleteModalTitle');
+        const messageEl = document.getElementById('deleteModalMessage');
+        const confirmBtn = document.getElementById('confirmDeleteModalBtn');
+
+        if (!modal || !confirmBtn) return;
+
+        if (titleEl) titleEl.textContent = title;
+        if (messageEl) messageEl.innerHTML = message;
+
+        const defaultBtnHtml = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Delete</span>
+        `;
+        confirmBtn.innerHTML = defaultBtnHtml;
+        confirmBtn.disabled = false;
+
+        // Replace button with clean clone to clear previous listeners
+        const cleanConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(cleanConfirmBtn, confirmBtn);
+
+        cleanConfirmBtn.addEventListener('click', async () => {
+            cleanConfirmBtn.disabled = true;
+            cleanConfirmBtn.innerHTML = '<span>Deleting...</span>';
+
+            try {
+                if (typeof onConfirm === 'function') {
+                    await onConfirm();
+                }
+                closeModal(modal);
+            } catch (err) {
+                cleanConfirmBtn.disabled = false;
+                cleanConfirmBtn.innerHTML = defaultBtnHtml;
+                showToast(err.message || 'Failed to complete deletion.', 'error');
+            }
+        });
+
+        openModal('deleteConfirmModal');
+    };
+
     // ==========================================================================
     // STEP 1: Theme & Site Settings Tab Handler (#tab-settings)
     // ==========================================================================
@@ -485,24 +542,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
-                const name = deleteBtn.getAttribute('data-name') || 'channel';
-                if (!confirm(`Are you sure you want to delete the "${name}" contact channel?`)) {
-                    return;
-                }
+                const name = deleteBtn.getAttribute('data-name') || 'contact channel';
 
-                try {
-                    await apiFetch(`/contact-info/${id}`, { method: 'DELETE' });
-                    alert(`Contact channel "${name}" deleted successfully!`);
-                    showToast(`Contact channel "${name}" deleted successfully!`, 'success');
-                    const row = deleteBtn.closest('.contact-row');
-                    if (row) {
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 250);
+                openDeleteModal({
+                    title: 'Delete Contact Channel',
+                    message: `Are you sure you want to delete the <strong>${escapeHtml(name)}</strong> channel?`,
+                    onConfirm: async () => {
+                        await apiFetch(`/contact-info/${id}`, { method: 'DELETE' });
+                        showToast(`Contact channel "${name}" deleted successfully!`, 'success');
+                        const row = deleteBtn.closest('.contact-row');
+                        if (row) {
+                            row.style.opacity = '0';
+                            setTimeout(() => row.remove(), 250);
+                        }
                     }
-                } catch (err) {
-                    alert(err.message || 'Failed to delete contact channel.');
-                    showToast(err.message || 'Failed to delete contact channel.', 'error');
-                }
+                });
             }
         });
     }
@@ -647,23 +701,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
                 const name = deleteBtn.getAttribute('data-name') || 'project';
-                if (!confirm(`Are you sure you want to delete the "${name}" project?`)) {
-                    return;
-                }
 
-                try {
-                    await apiFetch(`/projects/${id}`, { method: 'DELETE' });
-                    alert(`Project "${name}" deleted successfully!`);
-                    showToast(`Project "${name}" deleted successfully!`, 'success');
-                    const row = deleteBtn.closest('.project-row');
-                    if (row) {
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 250);
+                openDeleteModal({
+                    title: 'Delete Project',
+                    message: `Are you sure you want to delete <strong>${escapeHtml(name)}</strong>?`,
+                    onConfirm: async () => {
+                        await apiFetch(`/projects/${id}`, { method: 'DELETE' });
+                        showToast(`Project "${name}" deleted successfully!`, 'success');
+                        const row = deleteBtn.closest('.project-row');
+                        if (row) {
+                            row.style.opacity = '0';
+                            setTimeout(() => row.remove(), 250);
+                        }
                     }
-                } catch (err) {
-                    alert(err.message || 'Failed to delete project.');
-                    showToast(err.message || 'Failed to delete project.', 'error');
-                }
+                });
             }
         });
     }
@@ -833,23 +884,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
                 const name = deleteBtn.getAttribute('data-name') || 'role';
-                if (!confirm(`Are you sure you want to delete the "${name}" experience entry?`)) {
-                    return;
-                }
 
-                try {
-                    await apiFetch(`/experience/${id}`, { method: 'DELETE' });
-                    alert(`Experience "${name}" deleted successfully!`);
-                    showToast(`Experience "${name}" deleted successfully!`, 'success');
-                    const row = deleteBtn.closest('.experience-row');
-                    if (row) {
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 250);
+                openDeleteModal({
+                    title: 'Delete Experience Entry',
+                    message: `Are you sure you want to delete <strong>${escapeHtml(name)}</strong>?`,
+                    onConfirm: async () => {
+                        await apiFetch(`/experience/${id}`, { method: 'DELETE' });
+                        showToast(`Experience "${name}" deleted successfully!`, 'success');
+                        const row = deleteBtn.closest('.experience-row');
+                        if (row) {
+                            row.style.opacity = '0';
+                            setTimeout(() => row.remove(), 250);
+                        }
                     }
-                } catch (err) {
-                    alert(err.message || 'Failed to delete experience entry.');
-                    showToast(err.message || 'Failed to delete experience entry.', 'error');
-                }
+                });
             }
         });
     }
@@ -1018,23 +1066,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
                 const name = deleteBtn.getAttribute('data-name') || 'category';
-                if (!confirm(`Are you sure you want to delete the "${name}" skill category?`)) {
-                    return;
-                }
 
-                try {
-                    await apiFetch(`/skills/${id}`, { method: 'DELETE' });
-                    alert(`Skill category "${name}" deleted successfully!`);
-                    showToast(`Skill category "${name}" deleted successfully!`, 'success');
-                    const card = deleteBtn.closest('.skill-card');
-                    if (card) {
-                        card.style.opacity = '0';
-                        setTimeout(() => card.remove(), 250);
+                openDeleteModal({
+                    title: 'Delete Skill Category',
+                    message: `Are you sure you want to delete <strong>${escapeHtml(name)}</strong> and all its associated skills?`,
+                    onConfirm: async () => {
+                        await apiFetch(`/skills/${id}`, { method: 'DELETE' });
+                        showToast(`Skill category "${name}" deleted successfully!`, 'success');
+                        const card = deleteBtn.closest('.skill-card');
+                        if (card) {
+                            card.style.opacity = '0';
+                            setTimeout(() => card.remove(), 250);
+                        }
                     }
-                } catch (err) {
-                    alert(err.message || 'Failed to delete skill category.');
-                    showToast(err.message || 'Failed to delete skill category.', 'error');
-                }
+                });
             }
         });
     }
@@ -1171,21 +1216,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
                 const name = deleteBtn.getAttribute('data-name') || 'education';
-                if (!confirm(`Are you sure you want to delete the "${name}" entry?`)) return;
 
-                try {
-                    await apiFetch(`/education/${id}`, { method: 'DELETE' });
-                    alert(`Education entry "${name}" deleted successfully!`);
-                    showToast(`Education entry "${name}" deleted!`, 'success');
-                    const row = deleteBtn.closest('.education-row');
-                    if (row) {
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 250);
+                openDeleteModal({
+                    title: 'Delete Education Entry',
+                    message: `Are you sure you want to delete <strong>${escapeHtml(name)}</strong>?`,
+                    onConfirm: async () => {
+                        await apiFetch(`/education/${id}`, { method: 'DELETE' });
+                        showToast(`Education entry "${name}" deleted successfully!`, 'success');
+                        const row = deleteBtn.closest('.education-row');
+                        if (row) {
+                            row.style.opacity = '0';
+                            setTimeout(() => row.remove(), 250);
+                        }
                     }
-                } catch (err) {
-                    alert(err.message || 'Failed to delete education entry.');
-                    showToast(err.message || 'Failed to delete education entry.', 'error');
-                }
+                });
             }
         });
     }
@@ -1323,21 +1367,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
                 const name = deleteBtn.getAttribute('data-name') || 'certificate';
-                if (!confirm(`Are you sure you want to delete the "${name}" certification?`)) return;
 
-                try {
-                    await apiFetch(`/certificates/${id}`, { method: 'DELETE' });
-                    alert(`Certification "${name}" deleted successfully!`);
-                    showToast(`Certification "${name}" deleted!`, 'success');
-                    const row = deleteBtn.closest('.cert-row');
-                    if (row) {
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 250);
+                openDeleteModal({
+                    title: 'Delete Certification',
+                    message: `Are you sure you want to delete <strong>${escapeHtml(name)}</strong>?`,
+                    onConfirm: async () => {
+                        await apiFetch(`/certificates/${id}`, { method: 'DELETE' });
+                        showToast(`Certification "${name}" deleted successfully!`, 'success');
+                        const row = deleteBtn.closest('.cert-row');
+                        if (row) {
+                            row.style.opacity = '0';
+                            setTimeout(() => row.remove(), 250);
+                        }
                     }
-                } catch (err) {
-                    alert(err.message || 'Failed to delete certification.');
-                    showToast(err.message || 'Failed to delete certification.', 'error');
-                }
+                });
             }
         });
     }
@@ -1474,21 +1517,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
                 const name = deleteBtn.getAttribute('data-name') || 'message';
-                if (!confirm(`Are you sure you want to delete inquiry from "${name}"?`)) return;
 
-                try {
-                    await apiFetch(`/inquiries/${id}`, { method: 'DELETE' });
-                    alert(`Inquiry from "${name}" deleted successfully!`);
-                    showToast('Inquiry deleted successfully!', 'success');
-                    const row = deleteBtn.closest('.inquiry-row');
-                    if (row) {
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 250);
+                openDeleteModal({
+                    title: 'Delete Inquiry',
+                    message: `Are you sure you want to delete the inquiry from <strong>${escapeHtml(name)}</strong>?`,
+                    onConfirm: async () => {
+                        await apiFetch(`/inquiries/${id}`, { method: 'DELETE' });
+                        showToast('Inquiry deleted successfully!', 'success');
+                        const row = deleteBtn.closest('.inquiry-row');
+                        if (row) {
+                            row.style.opacity = '0';
+                            setTimeout(() => row.remove(), 250);
+                        }
                     }
-                } catch (err) {
-                    alert(err.message || 'Failed to delete inquiry.');
-                    showToast(err.message || 'Failed to delete inquiry.', 'error');
-                }
+                });
             }
         });
     }
