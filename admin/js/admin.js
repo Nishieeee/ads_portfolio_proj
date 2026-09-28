@@ -281,4 +281,98 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    // ==========================================================================
+    // STEP 2: Sections & Layout Tab Handler (#tab-sections)
+    // ==========================================================================
+    const sectionsForm = document.getElementById('sectionsForm');
+    const visibilityToggles = document.querySelectorAll('.section-visibility-toggle');
+
+    // 1. Instant Section Visibility Toggle: PATCH /api/sections/{id}/toggle-visibility
+    visibilityToggles.forEach(toggle => {
+        toggle.addEventListener('change', async () => {
+            const secId = toggle.getAttribute('data-id');
+            const secName = toggle.getAttribute('data-name') || 'Section';
+            const isVisible = toggle.checked;
+
+            try {
+                await apiFetch(`/sections/${secId}/toggle-visibility`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ is_visible: isVisible })
+                });
+                const statusText = isVisible ? 'visible' : 'hidden';
+                showToast(`"${secName}" section is now ${statusText}.`, 'success');
+            } catch (err) {
+                toggle.checked = !isVisible;
+                showToast(err.message || 'Failed to toggle section visibility.', 'error');
+            }
+        });
+    });
+
+    // 2. Sections Order & Content Save: POST /api/sections/reorder & PUT /api/sections/{id}
+    if (sectionsForm) {
+        sectionsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = sectionsForm.querySelector('button[type="submit"]')
+                           || document.querySelector('button[form="sectionsForm"]');
+
+            const originalText = submitBtn ? submitBtn.innerHTML : 'Save Section Order';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span>Saving Layout...</span>';
+            }
+
+            const rows = sectionsForm.querySelectorAll('.section-row');
+            const reorderList = [];
+            const updatePromises = [];
+
+            rows.forEach(row => {
+                const id = parseInt(row.getAttribute('data-id'), 10);
+                const orderIndex = parseInt(row.querySelector('.section-order-input')?.value || '1', 10);
+                const navLabel = row.querySelector('.section-nav-input')?.value.trim() || '';
+                const kicker = row.querySelector('.section-kicker-input')?.value.trim() || '';
+                const title = row.querySelector('.section-title-input')?.value.trim() || '';
+                const isVisible = row.querySelector('.section-visibility-toggle')?.checked ? 1 : 0;
+
+                if (id) {
+                    reorderList.push({ id, order_index: orderIndex });
+                    updatePromises.push(
+                        apiFetch(`/sections/${id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                nav_label: navLabel,
+                                kicker: kicker,
+                                title: title,
+                                order_index: orderIndex,
+                                is_visible: isVisible
+                            })
+                        })
+                    );
+                }
+            });
+
+            try {
+                // Update section content details
+                await Promise.all(updatePromises);
+
+                // Update section order sequence
+                if (reorderList.length > 0) {
+                    await apiFetch('/sections/reorder', {
+                        method: 'POST',
+                        body: JSON.stringify({ sections: reorderList })
+                    });
+                }
+
+                showToast('Section order and layout updated successfully!', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to update section layout.', 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            }
+        });
+    }
 });
+

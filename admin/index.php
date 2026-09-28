@@ -362,9 +362,9 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                     </thead>
                                     <tbody>
                                         <?php foreach ($pageSections as $sec): ?>
-                                            <tr>
+                                            <tr class="section-row" data-id="<?= (int)$sec['id'] ?>" data-key="<?= htmlspecialchars($sec['section_key']) ?>">
                                                 <td>
-                                                    <input type="number" name="order[<?= htmlspecialchars($sec['section_key']) ?>]" class="form-input" style="width:65px; text-align:center; padding:0.4rem;" value="<?= (int)($sec['order_index'] ?? 1) ?>" min="1" max="10">
+                                                    <input type="number" name="order[<?= (int)$sec['id'] ?>]" class="form-input section-order-input" style="width:65px; text-align:center; padding:0.4rem;" value="<?= (int)($sec['order_index'] ?? 1) ?>" min="1" max="10">
                                                 </td>
                                                 <td>
                                                     <code style="font-family:var(--font-mono); color:#ffffff; background:rgba(255,255,255,0.06); padding:0.2rem 0.5rem; border-radius:4px;">
@@ -372,17 +372,17 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                                     </code>
                                                 </td>
                                                 <td>
-                                                    <input type="text" name="nav_label[<?= htmlspecialchars($sec['section_key']) ?>]" class="form-input" value="<?= htmlspecialchars($sec['nav_label']) ?>" style="padding:0.4rem 0.75rem;">
+                                                    <input type="text" name="nav_label[<?= (int)$sec['id'] ?>]" class="form-input section-nav-input" value="<?= htmlspecialchars($sec['nav_label']) ?>" style="padding:0.4rem 0.75rem;">
                                                 </td>
                                                 <td>
-                                                    <input type="text" name="kicker[<?= htmlspecialchars($sec['section_key']) ?>]" class="form-input" value="<?= htmlspecialchars($sec['kicker'] ?? '') ?>" style="padding:0.4rem 0.75rem;">
+                                                    <input type="text" name="kicker[<?= (int)$sec['id'] ?>]" class="form-input section-kicker-input" value="<?= htmlspecialchars($sec['kicker'] ?? '') ?>" style="padding:0.4rem 0.75rem;">
                                                 </td>
                                                 <td>
-                                                    <input type="text" name="title[<?= htmlspecialchars($sec['section_key']) ?>]" class="form-input" value="<?= htmlspecialchars($sec['title']) ?>" style="padding:0.4rem 0.75rem;">
+                                                    <input type="text" name="title[<?= (int)$sec['id'] ?>]" class="form-input section-title-input" value="<?= htmlspecialchars($sec['title']) ?>" style="padding:0.4rem 0.75rem;">
                                                 </td>
                                                 <td>
                                                     <label class="switch-container">
-                                                        <input type="checkbox" name="visible[<?= htmlspecialchars($sec['section_key']) ?>]" class="switch-input" <?= !empty($sec['is_visible']) ? 'checked' : '' ?>>
+                                                        <input type="checkbox" name="visible[<?= (int)$sec['id'] ?>]" class="switch-input section-visibility-toggle" data-id="<?= (int)$sec['id'] ?>" data-name="<?= htmlspecialchars($sec['nav_label']) ?>" <?= !empty($sec['is_visible']) ? 'checked' : '' ?>>
                                                         <span class="switch-slider"></span>
                                                     </label>
                                                 </td>
