@@ -90,13 +90,17 @@ abstract class BaseController {
     }
 
     /**
-     * Validate a URL format.
+     * Validate a URL format (requires http:// or https://).
      *
      * @param string $url
      * @return bool
      */
     protected function validateUrl(string $url): bool {
-        return (bool) filter_var(trim($url), FILTER_VALIDATE_URL);
+        $trimmed = trim($url);
+        if (!filter_var($trimmed, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        return (bool) preg_match('/^https?:\/\//i', $trimmed);
     }
 
     /**
