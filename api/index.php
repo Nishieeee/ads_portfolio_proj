@@ -23,6 +23,7 @@ require_once __DIR__ . '/../App/Models/Project.php';
 require_once __DIR__ . '/../App/Models/Certificate.php';
 require_once __DIR__ . '/../App/Models/ContactInquiry.php';
 
+require_once __DIR__ . '/../App/Controller/BaseController.php';
 require_once __DIR__ . '/../App/Controller/SiteSettingController.php';
 require_once __DIR__ . '/../App/Controller/PageSectionController.php';
 require_once __DIR__ . '/../App/Controller/BasicInfoController.php';
