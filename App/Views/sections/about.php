@@ -20,13 +20,6 @@ $title = !empty($sec['title']) ? $sec['title'] : 'About Me';
             <div class="about-image-card">
                 <div class="image-wrapper">
                     <img src="<?= htmlspecialchars($basicInfo['avatar_url'] ?? 'Public/assets/images/image.png') ?>" alt="<?= htmlspecialchars($fullName) ?>" id="my-pic" class="avatar-img">
-                    <div class="image-caption-card">
-                        <span class="status-indicator"></span>
-                        <div>
-                            <div class="status-title">Computer Science</div>
-                            <div class="status-sub">Western Mindanao State Univ.</div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
