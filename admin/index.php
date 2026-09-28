@@ -58,10 +58,20 @@ try {
             } else {
                 $skillsArray = array_values(array_filter(array_map('trim', explode(',', $rawList))));
             }
+            $catLabel = $row['category_label'] ?? '';
+            while (str_contains($catLabel, '&amp;')) {
+                $catLabel = str_replace('&amp;', '&', $catLabel);
+            }
+            $skillsArray = array_map(function($s) {
+                while (str_contains($s, '&amp;')) {
+                    $s = str_replace('&amp;', '&', $s);
+                }
+                return $s;
+            }, $skillsArray);
             $skillsGrouped[] = [
                 'id' => (int)$row['id'],
                 'skill_category' => $row['skill_category'] ?? 'technical',
-                'category_label' => $row['category_label'] ?? '',
+                'category_label' => $catLabel,
                 'skills' => $skillsArray,
                 'skills_list' => is_array($skillsArray) ? implode(', ', $skillsArray) : $rawList
             ];
@@ -93,10 +103,19 @@ try {
         foreach ($portfolioData['my_skills'] ?? [] as $k => $grp) {
             $cat = $grp['skill_category'] ?? $grp['category'] ?? 'technical';
             $lbl = $grp['category_label'] ?? $grp['label'] ?? '';
+            while (str_contains($lbl, '&amp;')) {
+                $lbl = str_replace('&amp;', '&', $lbl);
+            }
             $rawSkills = $grp['skills'] ?? [];
             if (is_string($rawSkills)) {
                 $rawSkills = array_values(array_filter(array_map('trim', explode(',', $rawSkills))));
             }
+            $rawSkills = array_map(function($s) {
+                while (str_contains($s, '&amp;')) {
+                    $s = str_replace('&amp;', '&', $s);
+                }
+                return $s;
+            }, $rawSkills);
             $skillsGrouped[] = [
                 'id' => (int)($grp['id'] ?? ($k + 1)),
                 'skill_category' => $cat,

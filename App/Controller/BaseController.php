@@ -54,8 +54,23 @@ abstract class BaseController {
         if (is_string($data)) {
             // Remove null-bytes and trim leading/trailing whitespace
             $clean = str_replace(chr(0), '', trim($data));
-            // Convert special characters to HTML entities to prevent stored XSS
-            return htmlspecialchars($clean, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+            // Decode any pre-existing HTML entity ampersands (e.g. &amp;, &amp;amp;)
+            // to prevent compounding or double-encoding bugs across edits
+            while (str_contains($clean, '&amp;')) {
+                $clean = str_replace('&amp;', '&', $clean);
+            }
+
+            // Convert special characters to HTML entities to prevent stored XSS (<script>, etc.)
+            $clean = htmlspecialchars($clean, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+            // Restore clean ampersand so plain '&' characters (e.g. 'Backend & APIs', 'CI/CD & DevOps')
+            // are not stored as '&amp;' in the database, avoiding double-encoding in views.
+            while (str_contains($clean, '&amp;')) {
+                $clean = str_replace('&amp;', '&', $clean);
+            }
+
+            return $clean;
         }
 
         return $data;

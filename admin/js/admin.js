@@ -1026,11 +1026,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 skills_list: skillsText
                             })
                         }).then(res => {
+                            if (res?.data) {
+                                // Sync inputs with clean returned data
+                                const lblInput = card.querySelector('.skill-label-input');
+                                if (lblInput && res.data.category_label !== undefined) {
+                                    lblInput.value = res.data.category_label;
+                                }
+                                const listInput = card.querySelector('.skill-list-input');
+                                if (listInput && res.data.skills_list !== undefined) {
+                                    listInput.value = res.data.skills_list;
+                                }
+                            }
                             // Update badge preview dynamically
                             const preview = card.querySelector('.skills-badges-preview');
                             if (preview && res?.data?.skills_array) {
                                 preview.innerHTML = res.data.skills_array
-                                    .map(s => `<span class="badge" style="color:#ffffff;">${s}</span>`)
+                                    .map(s => `<span class="badge" style="color:#ffffff;">${escapeHtml(s)}</span>`)
                                     .join(' ');
                             }
                         })
@@ -1116,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (res?.data && skillsGrid) {
                     const rowData = res.data;
                     const skillsArray = rowData.skills_array || [];
-                    const badgesHtml = skillsArray.map(s => `<span class="badge" style="color:#ffffff;">${s}</span>`).join(' ');
+                    const badgesHtml = skillsArray.map(s => `<span class="badge" style="color:#ffffff;">${escapeHtml(s)}</span>`).join(' ');
 
                     const newCard = document.createElement('div');
                     newCard.className = 'admin-card skill-card';
@@ -1124,20 +1135,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     newCard.innerHTML = `
                         <div class="admin-card-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
                             <div style="flex:1; margin-right:0.75rem;">
-                                <input type="text" class="form-input skill-label-input" value="${rowData.category_label || ''}" style="font-weight:700; font-size:1.05rem; padding:0.35rem 0.6rem; margin-bottom:0.4rem;" placeholder="Category Name">
+                                <input type="text" class="form-input skill-label-input" value="${escapeHtml(rowData.category_label || '')}" style="font-weight:700; font-size:1.05rem; padding:0.35rem 0.6rem; margin-bottom:0.4rem;" placeholder="Category Name">
                                 <select class="form-select skill-category-select" style="font-size:0.75rem; padding:0.25rem 0.5rem; width:auto; display:inline-block;">
                                     <option value="technical" ${rowData.skill_category === 'technical' ? 'selected' : ''}>Technical</option>
                                     <option value="soft" ${rowData.skill_category === 'soft' ? 'selected' : ''}>Soft</option>
                                 </select>
                             </div>
-                            <button type="button" class="btn-icon delete-skill-btn" data-id="${rowData.id}" data-name="${rowData.category_label || ''}" title="Delete Category" style="color:var(--danger); padding:0.4rem;">
+                            <button type="button" class="btn-icon delete-skill-btn" data-id="${rowData.id}" data-name="${escapeHtml(rowData.category_label || '')}" title="Delete Category" style="color:var(--danger); padding:0.4rem;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                         </div>
                         <div class="admin-card-body">
                             <div class="form-group">
                                 <label class="form-label">Comma-Separated Skills</label>
-                                <textarea class="form-textarea skill-list-input" rows="3">${rowData.skills_list || ''}</textarea>
+                                <textarea class="form-textarea skill-list-input" rows="3">${escapeHtml(rowData.skills_list || '')}</textarea>
                             </div>
                             <div class="skills-badges-preview" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.75rem;">
                                 ${badgesHtml}

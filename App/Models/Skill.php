@@ -34,7 +34,8 @@ class Skill {
         }
         $stmt->execute();
 
-        return $stmt->fetchAll() ?: [];
+        $rows = $stmt->fetchAll() ?: [];
+        return array_map([$this, 'cleanRow'], $rows);
     }
 
     /**
@@ -52,6 +53,7 @@ class Skill {
 
         $row = $stmt->fetch();
         if ($row) {
+            $row = $this->cleanRow($row);
             $this->populate($row);
             return $row;
         }
@@ -73,10 +75,11 @@ class Skill {
 
         $stmt = $this->conn->prepare($query);
 
-        $skillsList = $this->formatSkillsList($data['skills_list'] ?? $data['skills'] ?? '');
+        $categoryLabel = $this->cleanAmpersands(trim($data['category_label'] ?? ''));
+        $skillsList = $this->cleanAmpersands($this->formatSkillsList($data['skills_list'] ?? $data['skills'] ?? ''));
 
         $stmt->bindValue(':skill_category', trim($data['skill_category'] ?? 'technical'));
-        $stmt->bindValue(':category_label', trim($data['category_label'] ?? ''));
+        $stmt->bindValue(':category_label', $categoryLabel);
         $stmt->bindValue(':skills_list', $skillsList);
 
         if ($stmt->execute()) {
@@ -108,10 +111,11 @@ class Skill {
 
         $stmt = $this->conn->prepare($query);
 
-        $skillsList = $this->formatSkillsList($data['skills_list'] ?? $data['skills'] ?? '');
+        $categoryLabel = $this->cleanAmpersands(trim($data['category_label'] ?? ''));
+        $skillsList = $this->cleanAmpersands($this->formatSkillsList($data['skills_list'] ?? $data['skills'] ?? ''));
 
         $stmt->bindValue(':skill_category', trim($data['skill_category'] ?? 'technical'));
-        $stmt->bindValue(':category_label', trim($data['category_label'] ?? ''));
+        $stmt->bindValue(':category_label', $categoryLabel);
         $stmt->bindValue(':skills_list', $skillsList);
         $stmt->bindValue(':id', (int) $targetId, PDO::PARAM_INT);
 
@@ -169,6 +173,35 @@ class Skill {
     }
 
     /**
+     * Clean ampersands from a skill row array.
+     *
+     * @param array $row
+     * @return array
+     */
+    public function cleanRow(array $row): array {
+        if (isset($row['category_label']) && is_string($row['category_label'])) {
+            $row['category_label'] = $this->cleanAmpersands($row['category_label']);
+        }
+        if (isset($row['skills_list']) && is_string($row['skills_list'])) {
+            $row['skills_list'] = $this->cleanAmpersands($row['skills_list']);
+        }
+        return $row;
+    }
+
+    /**
+     * Normalize ampersands by decoding any stored &amp; or &amp;amp; entities into plain '&'.
+     *
+     * @param string $str
+     * @return string
+     */
+    public function cleanAmpersands(string $str): string {
+        while (str_contains($str, '&amp;')) {
+            $str = str_replace('&amp;', '&', $str);
+        }
+        return $str;
+    }
+
+    /**
      * Populate model properties from an associative row array.
      *
      * @param array $row
@@ -177,7 +210,7 @@ class Skill {
     public function populate(array $row): void {
         $this->id             = isset($row['id']) ? (int) $row['id'] : null;
         $this->skill_category = $row['skill_category'] ?? null;
-        $this->category_label = $row['category_label'] ?? null;
-        $this->skills_list    = $row['skills_list'] ?? null;
+        $this->category_label = isset($row['category_label']) ? $this->cleanAmpersands((string)$row['category_label']) : null;
+        $this->skills_list    = isset($row['skills_list']) ? $this->cleanAmpersands((string)$row['skills_list']) : null;
     }
 }
