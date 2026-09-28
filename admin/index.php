@@ -4,23 +4,93 @@
  * Pure Vanilla PHP, CSS, and JavaScript
  */
 
-// 1. Load Data Store (Strictly mapped to portfolio_cms database tables)
-$dataPath = dirname(__DIR__) . '/portfolio_data.json';
-$portfolioData = [];
-if (file_exists($dataPath)) {
-    $portfolioData = json_decode(file_get_contents($dataPath), true) ?: [];
-}
+// 1. Load Data Store (Live MySQL database with graceful JSON fallback)
+require_once dirname(__DIR__) . '/Config/database.php';
 
-$siteSettings   = $portfolioData['site_settings'] ?? ['theme' => 'monochrome', 'site_title' => 'Portfolio CMS', 'availability_badge' => 'Available'];
-$pageSections   = $portfolioData['page_sections'] ?? [];
-$basicInfo      = $portfolioData['my_basic_info'] ?? [];
-$contacts       = $portfolioData['my_contact_info'] ?? [];
-$experiences    = $portfolioData['my_experience'] ?? [];
-$projects       = $portfolioData['my_projects'] ?? [];
-$skillsGrouped  = $portfolioData['my_skills'] ?? [];
-$educations     = $portfolioData['my_education'] ?? [];
-$certificates   = $portfolioData['my_certificates'] ?? [];
-$inquiries      = $portfolioData['contact_inquiries'] ?? [];
+$siteSettings   = ['theme' => 'monochrome', 'site_title' => 'Portfolio CMS', 'availability_badge' => 'Available'];
+$pageSections   = [];
+$basicInfo      = [];
+$contacts       = [];
+$experiences    = [];
+$projects       = [];
+$skillsGrouped  = [];
+$educations     = [];
+$certificates   = [];
+$inquiries      = [];
+
+try {
+    $db = Database::getInstance()->getConnection();
+    if ($db) {
+        $stmt = $db->query("SELECT * FROM site_settings WHERE id = 1 LIMIT 1");
+        $dbSettings = $stmt->fetch();
+        if ($dbSettings) $siteSettings = $dbSettings;
+
+        $stmt = $db->query("SELECT * FROM page_sections ORDER BY order_index ASC");
+        $pageSections = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_basic_info WHERE id = 1 LIMIT 1");
+        $basicInfo = $stmt->fetch() ?: [];
+        if (!empty($basicInfo['bio_paragraphs']) && is_string($basicInfo['bio_paragraphs'])) {
+            $decoded = json_decode($basicInfo['bio_paragraphs'], true);
+            if (is_array($decoded)) {
+                $basicInfo['bio_paragraphs'] = $decoded;
+            }
+        }
+
+        $stmt = $db->query("SELECT * FROM my_contact_info ORDER BY id ASC");
+        $contacts = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_experience ORDER BY id ASC");
+        $experiences = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_projects ORDER BY id ASC");
+        $projects = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_skills ORDER BY id ASC");
+        $skillsRows = $stmt->fetchAll() ?: [];
+        foreach ($skillsRows as $row) {
+            $rawList = $row['skills_list'] ?? '';
+            $skillsArray = [];
+            $dec = json_decode($rawList, true);
+            if (is_array($dec)) {
+                $skillsArray = $dec;
+            } else {
+                $skillsArray = array_values(array_filter(array_map('trim', explode(',', $rawList))));
+            }
+            $skillsGrouped[] = [
+                'id' => (int)$row['id'],
+                'skill_category' => $row['skill_category'] ?? 'technical',
+                'category_label' => $row['category_label'] ?? '',
+                'skills' => $skillsArray,
+                'skills_list' => is_array($skillsArray) ? implode(', ', $skillsArray) : $rawList
+            ];
+        }
+
+        $stmt = $db->query("SELECT * FROM my_education ORDER BY id ASC");
+        $educations = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_certificates ORDER BY id ASC");
+        $certificates = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM contact_inquiries ORDER BY created_at DESC");
+        $inquiries = $stmt->fetchAll() ?: [];
+    }
+} catch (Throwable $e) {
+    $dataPath = dirname(__DIR__) . '/portfolio_data.json';
+    if (file_exists($dataPath)) {
+        $portfolioData = json_decode(file_get_contents($dataPath), true) ?: [];
+        $siteSettings   = $portfolioData['site_settings'] ?? $siteSettings;
+        $pageSections   = $portfolioData['page_sections'] ?? [];
+        $basicInfo      = $portfolioData['my_basic_info'] ?? [];
+        $contacts       = $portfolioData['my_contact_info'] ?? [];
+        $experiences    = $portfolioData['my_experience'] ?? [];
+        $projects       = $portfolioData['my_projects'] ?? [];
+        $skillsGrouped  = $portfolioData['my_skills'] ?? [];
+        $educations     = $portfolioData['my_education'] ?? [];
+        $certificates   = $portfolioData['my_certificates'] ?? [];
+        $inquiries      = $portfolioData['contact_inquiries'] ?? [];
+    }
+}
 
 $unreadInquiries = count(array_filter($inquiries, fn($m) => empty($m['is_read'])));
 $activeSectionsCount = count(array_filter($pageSections, fn($s) => !empty($s['is_visible'])));
@@ -403,7 +473,7 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                             <p class="panel-sub">Manage software applications, technical descriptions, and flagship badges.</p>
                         </div>
                         <div class="panel-actions">
-                            <button type="button" class="btn btn-primary" data-modal-open="projectModal">
+                            <button type="button" class="btn btn-primary" id="openAddProjectBtn">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                 <span>Add New Project</span>
                             </button>
@@ -422,9 +492,9 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                         <th style="width: 120px;">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="projectsTableBody">
                                     <?php foreach ($projects as $proj): ?>
-                                        <tr>
+                                        <tr class="project-row" data-id="<?= (int)$proj['id'] ?>">
                                             <td>
                                                 <div class="cell-primary"><?= htmlspecialchars($proj['project_name']) ?></div>
                                                 <div style="font-size:0.8rem; color:var(--text-muted);"><?= htmlspecialchars($proj['subtitle'] ?? '') ?></div>
@@ -455,10 +525,10 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                             </td>
                                             <td>
                                                 <div class="cell-actions">
-                                                    <button type="button" class="btn-icon" title="Edit" data-modal-open="projectModal">
+                                                    <button type="button" class="btn-icon edit-project-btn" data-id="<?= (int)$proj['id'] ?>" data-project='<?= htmlspecialchars(json_encode($proj, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>' title="Edit">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                                                     </button>
-                                                    <button type="button" class="btn-icon" title="Delete" style="color:var(--danger);">
+                                                    <button type="button" class="btn-icon delete-project-btn" data-id="<?= (int)$proj['id'] ?>" data-name="<?= htmlspecialchars($proj['project_name']) ?>" title="Delete" style="color:var(--danger);">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                                     </button>
                                                 </div>
@@ -479,7 +549,7 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                             <p class="panel-sub">Manage client and organizational career roles, dates, and bullet descriptions.</p>
                         </div>
                         <div class="panel-actions">
-                            <button type="button" class="btn btn-primary" data-modal-open="experienceModal">
+                            <button type="button" class="btn btn-primary" id="openAddExperienceBtn">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                 <span>Add Experience</span>
                             </button>
@@ -498,9 +568,9 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                         <th style="width: 100px;">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="experienceTableBody">
                                     <?php foreach ($experiences as $exp): ?>
-                                        <tr>
+                                        <tr class="experience-row" data-id="<?= (int)$exp['id'] ?>">
                                             <td>
                                                 <div class="cell-primary"><?= htmlspecialchars($exp['job_title'] ?? '') ?></div>
                                                 <div style="color:var(--text-muted); font-size:0.85rem;"><?= htmlspecialchars($exp['company_name'] ?? '') ?></div>
@@ -512,10 +582,10 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                             </td>
                                             <td>
                                                 <div class="cell-actions">
-                                                    <button type="button" class="btn-icon" title="Edit" data-modal-open="experienceModal">
+                                                    <button type="button" class="btn-icon edit-exp-btn" data-id="<?= (int)$exp['id'] ?>" data-exp='<?= htmlspecialchars(json_encode($exp, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>' title="Edit">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                                                     </button>
-                                                    <button type="button" class="btn-icon" title="Delete" style="color:var(--danger);">
+                                                    <button type="button" class="btn-icon delete-exp-btn" data-id="<?= (int)$exp['id'] ?>" data-name="<?= htmlspecialchars($exp['job_title'] ?? '') ?>" title="Delete" style="color:var(--danger);">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                                     </button>
                                                 </div>
@@ -535,26 +605,33 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                             <h2 class="panel-heading">Skills Matrix</h2>
                             <p class="panel-sub">Manage categorical technical and soft competencies.</p>
                         </div>
-                        <div class="panel-actions">
-                            <button type="button" class="btn btn-primary">Save Skills Matrix</button>
+                        <div class="panel-actions" style="display:flex; gap:0.75rem;">
+                            <button type="button" class="btn btn-secondary" id="openAddSkillBtn">+ Add Category</button>
+                            <button type="button" class="btn btn-primary" id="saveSkillsMatrixBtn">Save Skills Matrix</button>
                         </div>
                     </div>
 
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                    <div id="skillsGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
                         <?php foreach ($skillsGrouped as $idx => $grp): ?>
-                            <div class="admin-card">
-                                <div class="admin-card-header">
-                                    <div>
-                                        <div class="card-title"><?= htmlspecialchars($grp['category_label']) ?></div>
-                                        <span class="badge" style="margin-top:0.35rem; display:inline-block;"><?= ucfirst($grp['skill_category']) ?></span>
+                            <div class="admin-card skill-card" data-id="<?= (int)$grp['id'] ?>">
+                                <div class="admin-card-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <div style="flex:1; margin-right:0.75rem;">
+                                        <input type="text" class="form-input skill-label-input" value="<?= htmlspecialchars($grp['category_label']) ?>" style="font-weight:700; font-size:1.05rem; padding:0.35rem 0.6rem; margin-bottom:0.4rem;" placeholder="Category Name">
+                                        <select class="form-select skill-category-select" style="font-size:0.75rem; padding:0.25rem 0.5rem; width:auto; display:inline-block;">
+                                            <option value="technical" <?= ($grp['skill_category'] ?? '') === 'technical' ? 'selected' : '' ?>>Technical</option>
+                                            <option value="soft" <?= ($grp['skill_category'] ?? '') === 'soft' ? 'selected' : '' ?>>Soft</option>
+                                        </select>
                                     </div>
+                                    <button type="button" class="btn-icon delete-skill-btn" data-id="<?= (int)$grp['id'] ?>" data-name="<?= htmlspecialchars($grp['category_label']) ?>" title="Delete Category" style="color:var(--danger); padding:0.4rem;">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    </button>
                                 </div>
                                 <div class="admin-card-body">
                                     <div class="form-group">
                                         <label class="form-label">Comma-Separated Skills</label>
-                                        <textarea class="form-textarea" rows="3"><?= htmlspecialchars(implode(', ', $grp['skills'] ?? [])) ?></textarea>
+                                        <textarea class="form-textarea skill-list-input" rows="3"><?= htmlspecialchars(implode(', ', $grp['skills'] ?? [])) ?></textarea>
                                     </div>
-                                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.75rem;">
+                                    <div class="skills-badges-preview" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.75rem;">
                                         <?php foreach ($grp['skills'] as $skill): ?>
                                             <span class="badge" style="color:#ffffff;"><?= htmlspecialchars($skill) ?></span>
                                         <?php endforeach; ?>
@@ -578,7 +655,7 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                     <div class="admin-card">
                         <div class="admin-card-header">
                             <h3 class="card-title">Formal Education</h3>
-                            <button type="button" class="btn btn-secondary btn-sm">+ Add Education</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="openAddEducationBtn">+ Add Education</button>
                         </div>
                         <div class="table-responsive">
                             <table class="data-table">
@@ -588,20 +665,25 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                         <th>Course / Degree</th>
                                         <th>Period</th>
                                         <th>Focus Areas</th>
-                                        <th style="width:80px;">Actions</th>
+                                        <th style="width:90px;">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="educationTableBody">
                                     <?php foreach ($educations as $edu): ?>
-                                        <tr>
+                                        <tr class="education-row" data-id="<?= (int)$edu['id'] ?>">
                                             <td class="cell-primary"><?= htmlspecialchars($edu['school_name'] ?? '') ?></td>
                                             <td><?= htmlspecialchars($edu['course'] ?? '') ?></td>
                                             <td style="font-family:var(--font-mono); font-size:0.8rem;"><?= htmlspecialchars($edu['date_display'] ?? '') ?></td>
                                             <td style="font-size:0.82rem; max-width:260px;"><?= htmlspecialchars($edu['focus_areas'] ?? '') ?></td>
                                             <td>
-                                                <button type="button" class="btn-icon" title="Edit">
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                                                </button>
+                                                <div class="cell-actions">
+                                                    <button type="button" class="btn-icon edit-edu-btn" data-id="<?= (int)$edu['id'] ?>" data-edu='<?= htmlspecialchars(json_encode($edu, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>' title="Edit">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                                                    </button>
+                                                    <button type="button" class="btn-icon delete-edu-btn" data-id="<?= (int)$edu['id'] ?>" data-name="<?= htmlspecialchars($edu['school_name'] ?? '') ?>" title="Delete" style="color:var(--danger);">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -614,7 +696,7 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                     <div class="admin-card">
                         <div class="admin-card-header">
                             <h3 class="card-title">Honors & Certifications</h3>
-                            <button type="button" class="btn btn-secondary btn-sm">+ Add Certificate</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="openAddCertBtn">+ Add Certificate</button>
                         </div>
                         <div class="table-responsive">
                             <table class="data-table">
@@ -624,12 +706,12 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                         <th>Date</th>
                                         <th>Credential ID</th>
                                         <th>Verification URL</th>
-                                        <th style="width:80px;">Actions</th>
+                                        <th style="width:90px;">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="certTableBody">
                                     <?php foreach ($certificates as $cert): ?>
-                                        <tr>
+                                        <tr class="cert-row" data-id="<?= (int)$cert['id'] ?>">
                                             <td>
                                                 <div class="cell-primary"><?= htmlspecialchars($cert['title'] ?? '') ?></div>
                                                 <div style="color:var(--text-muted); font-size:0.8rem;"><?= htmlspecialchars($cert['issuer'] ?? '') ?></div>
@@ -644,9 +726,14 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <button type="button" class="btn-icon" title="Edit">
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                                                </button>
+                                                <div class="cell-actions">
+                                                    <button type="button" class="btn-icon edit-cert-btn" data-id="<?= (int)$cert['id'] ?>" data-cert='<?= htmlspecialchars(json_encode($cert, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>' title="Edit">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                                                    </button>
+                                                    <button type="button" class="btn-icon delete-cert-btn" data-id="<?= (int)$cert['id'] ?>" data-name="<?= htmlspecialchars($cert['title'] ?? '') ?>" title="Delete" style="color:var(--danger);">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -674,24 +761,38 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                 <h3 class="card-title">Basic Information</h3>
                             </div>
                             <div class="admin-card-body">
-                                <div class="form-grid-2">
+                                <div class="form-grid-2" style="grid-template-columns: 1fr 1fr 1fr;">
                                     <div class="form-group">
                                         <label class="form-label" for="first_name">First Name</label>
-                                        <input type="text" id="first_name" name="first_name" class="form-input" value="<?= htmlspecialchars($basicInfo['first_name'] ?? '') ?>">
+                                        <input type="text" id="first_name" name="first_name" class="form-input" value="<?= htmlspecialchars($basicInfo['first_name'] ?? '') ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="middle_name">Middle Name</label>
+                                        <input type="text" id="middle_name" name="middle_name" class="form-input" value="<?= htmlspecialchars($basicInfo['middle_name'] ?? '') ?>">
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="last_name">Last Name</label>
-                                        <input type="text" id="last_name" name="last_name" class="form-input" value="<?= htmlspecialchars($basicInfo['last_name'] ?? '') ?>">
+                                        <input type="text" id="last_name" name="last_name" class="form-input" value="<?= htmlspecialchars($basicInfo['last_name'] ?? '') ?>" required>
                                     </div>
                                 </div>
                                 <div class="form-grid-2">
                                     <div class="form-group">
                                         <label class="form-label" for="role_title">Role Title</label>
-                                        <input type="text" id="role_title" name="role_title" class="form-input" value="<?= htmlspecialchars($basicInfo['role_title'] ?? '') ?>">
+                                        <input type="text" id="role_title" name="role_title" class="form-input" value="<?= htmlspecialchars($basicInfo['role_title'] ?? '') ?>" required>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label" for="avatar_url">Avatar Image URL</label>
+                                        <label class="form-label" for="birth_date">Birth Date</label>
+                                        <input type="date" id="birth_date" name="birth_date" class="form-input" value="<?= htmlspecialchars($basicInfo['birth_date'] ?? '') ?>">
+                                    </div>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label" for="avatar_url">Avatar Image URL / Path</label>
                                         <input type="text" id="avatar_url" name="avatar_url" class="form-input" value="<?= htmlspecialchars($basicInfo['avatar_url'] ?? '') ?>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="resume_url">Resume Document URL / Path</label>
+                                        <input type="text" id="resume_url" name="resume_url" class="form-input" value="<?= htmlspecialchars($basicInfo['resume_url'] ?? '') ?>">
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -699,8 +800,8 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                     <textarea id="tagline" name="tagline" class="form-textarea" rows="2"><?= htmlspecialchars($basicInfo['tagline'] ?? '') ?></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label" for="bio_paragraphs">About Bio Paragraphs</label>
-                                    <textarea id="bio_paragraphs" name="bio_paragraphs" class="form-textarea" rows="4"><?= htmlspecialchars(implode("\n\n", $basicInfo['bio_paragraphs'] ?? [])) ?></textarea>
+                                    <label class="form-label" for="bio_paragraphs">About Bio Narrative</label>
+                                    <textarea id="bio_paragraphs" name="bio_paragraphs" class="form-textarea" rows="4"><?= htmlspecialchars(is_array($basicInfo['bio_paragraphs'] ?? null) ? implode("\n\n", $basicInfo['bio_paragraphs']) : ($basicInfo['bio_paragraphs'] ?? '')) ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -709,7 +810,7 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                         <div class="admin-card">
                             <div class="admin-card-header">
                                 <h3 class="card-title">Contact Channels Directory</h3>
-                                <button type="button" class="btn btn-secondary btn-sm">+ Add Channel</button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="openAddContactBtn">+ Add Channel</button>
                             </div>
                             <div class="table-responsive">
                                 <table class="data-table">
@@ -718,19 +819,24 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                             <th>Channel</th>
                                             <th>Type</th>
                                             <th>Value / Handle</th>
-                                            <th style="width:80px;">Actions</th>
+                                            <th style="width:90px;">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="contactTableBody">
                                         <?php foreach ($contacts as $contact): ?>
-                                            <tr>
+                                            <tr class="contact-row" data-id="<?= (int)$contact['id'] ?>">
                                                 <td class="cell-primary"><?= htmlspecialchars($contact['contact_name']) ?></td>
                                                 <td><span class="badge"><?= htmlspecialchars($contact['contact_type']) ?></span></td>
                                                 <td style="font-family:var(--font-mono); font-size:0.85rem;"><?= htmlspecialchars($contact['contact_info']) ?></td>
                                                 <td>
-                                                    <button type="button" class="btn-icon" title="Edit">
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                                                    </button>
+                                                    <div class="cell-actions">
+                                                        <button type="button" class="btn-icon edit-contact-btn" data-id="<?= (int)$contact['id'] ?>" data-name="<?= htmlspecialchars($contact['contact_name']) ?>" data-type="<?= htmlspecialchars($contact['contact_type']) ?>" data-info="<?= htmlspecialchars($contact['contact_info']) ?>" title="Edit">
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                                                        </button>
+                                                        <button type="button" class="btn-icon delete-contact-btn" data-id="<?= (int)$contact['id'] ?>" data-name="<?= htmlspecialchars($contact['contact_name']) ?>" title="Delete" style="color:#ef4444;">
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -763,9 +869,9 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                         <th style="width: 100px;">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="inquiriesTableBody">
                                     <?php foreach ($inquiries as $inq): ?>
-                                        <tr>
+                                        <tr class="inquiry-row" data-id="<?= (int)$inq['id'] ?>">
                                             <td style="font-family:var(--font-mono); font-size:0.8rem;"><?= htmlspecialchars($inq['created_at'] ?? '') ?></td>
                                             <td class="cell-primary"><?= htmlspecialchars($inq['sender_name'] ?? '') ?></td>
                                             <td>
@@ -775,13 +881,16 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                             </td>
                                             <td><?= htmlspecialchars($inq['subject'] ?? '') ?></td>
                                             <td>
-                                                <span class="badge <?= !empty($inq['is_read']) ? 'badge-accent' : 'badge-success' ?>">
+                                                <span class="badge inquiry-status-badge <?= !empty($inq['is_read']) ? 'badge-accent' : 'badge-success' ?>">
                                                     <?= !empty($inq['is_read']) ? 'Read' : 'New' ?>
                                                 </span>
                                             </td>
                                             <td>
-                                                <div class="cell-actions">
-                                                    <button type="button" class="btn btn-secondary btn-sm" data-modal-open="inquiryModal-<?= $inq['id'] ?>">Read</button>
+                                                <div class="cell-actions" style="display:flex; gap:0.4rem; align-items:center;">
+                                                    <button type="button" class="btn btn-secondary btn-sm open-inquiry-btn" data-modal-open="inquiryModal-<?= $inq['id'] ?>" data-id="<?= (int)$inq['id'] ?>" data-read="<?= !empty($inq['is_read']) ? '1' : '0' ?>">Read</button>
+                                                    <button type="button" class="btn-icon delete-inquiry-btn" data-id="<?= (int)$inq['id'] ?>" data-name="<?= htmlspecialchars($inq['sender_name'] ?? '') ?>" title="Delete" style="color:var(--danger);">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -800,12 +909,13 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
     <div class="modal-overlay" id="projectModal">
         <div class="modal-dialog">
             <div class="modal-header">
-                <h3 class="modal-title">Project Details</h3>
+                <h3 class="modal-title" id="projectModalTitle">Project Details</h3>
                 <button type="button" class="btn-icon" data-modal-close aria-label="Close">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
-            <form class="admin-form">
+            <form class="admin-form" id="projectModalForm">
+                <input type="hidden" id="modal_project_id" value="">
                 <div class="modal-body">
                     <div class="form-group">
                         <label class="form-label" for="modal_project_name">Project Title</label>
@@ -840,7 +950,7 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Project</button>
+                    <button type="submit" class="btn btn-primary" id="projectModalSubmitBtn">Save Project</button>
                 </div>
             </form>
         </div>
@@ -850,12 +960,13 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
     <div class="modal-overlay" id="experienceModal">
         <div class="modal-dialog">
             <div class="modal-header">
-                <h3 class="modal-title">Experience Entry</h3>
+                <h3 class="modal-title" id="experienceModalTitle">Experience Entry</h3>
                 <button type="button" class="btn-icon" data-modal-close aria-label="Close">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
-            <form class="admin-form">
+            <form class="admin-form" id="experienceModalForm">
+                <input type="hidden" id="modal_exp_id" value="">
                 <div class="modal-body">
                     <div class="form-grid-2">
                         <div class="form-group">
@@ -892,7 +1003,158 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Experience</button>
+                    <button type="submit" class="btn btn-primary" id="experienceModalSubmitBtn">Save Experience</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT SKILL CATEGORY -->
+    <div class="modal-overlay" id="skillModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title" id="skillModalTitle">Add Skill Category</h3>
+                <button type="button" class="btn-icon" data-modal-close aria-label="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form class="admin-form" id="skillModalForm">
+                <input type="hidden" id="modal_skill_id" value="">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="modal_skill_category">Category Domain</label>
+                        <select id="modal_skill_category" class="form-select" required>
+                            <option value="technical">Technical Skills</option>
+                            <option value="soft">Soft & Professional Skills</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_skill_label">Category Heading</label>
+                        <input type="text" id="modal_skill_label" class="form-input" placeholder="e.g. Cloud Infrastructure & DevOps" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_skill_list">Skills List (Comma-separated)</label>
+                        <textarea id="modal_skill_list" class="form-textarea" rows="4" placeholder="AWS EC2, Docker, GitHub Actions, NGINX" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="skillModalSubmitBtn">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT EDUCATION -->
+    <div class="modal-overlay" id="educationModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title" id="educationModalTitle">Formal Education Entry</h3>
+                <button type="button" class="btn-icon" data-modal-close aria-label="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form class="admin-form" id="educationModalForm">
+                <input type="hidden" id="modal_edu_id" value="">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="modal_edu_school">Institution / University</label>
+                        <input type="text" id="modal_edu_school" class="form-input" placeholder="e.g. Ateneo de Zamboanga University" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_edu_course">Course / Degree</label>
+                        <input type="text" id="modal_edu_course" class="form-input" placeholder="e.g. BS in Information Technology" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_edu_dates">Date Display Range</label>
+                        <input type="text" id="modal_edu_dates" class="form-input" placeholder="e.g. 2022 – 2026" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_edu_focus">Focus Areas / Specialization</label>
+                        <textarea id="modal_edu_focus" class="form-textarea" rows="3" placeholder="Software Engineering, Distributed Systems, Database Architecture"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="educationModalSubmitBtn">Save Education</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT CERTIFICATION -->
+    <div class="modal-overlay" id="certificateModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title" id="certificateModalTitle">Honor & Certification</h3>
+                <button type="button" class="btn-icon" data-modal-close aria-label="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form class="admin-form" id="certificateModalForm">
+                <input type="hidden" id="modal_cert_id" value="">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="modal_cert_title">Title</label>
+                        <input type="text" id="modal_cert_title" class="form-input" placeholder="e.g. AWS Certified Cloud Practitioner" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_cert_issuer">Issuer / Organization</label>
+                        <input type="text" id="modal_cert_issuer" class="form-input" placeholder="e.g. Amazon Web Services" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_cert_date">Date Range / Issued</label>
+                        <input type="text" id="modal_cert_date" class="form-input" placeholder="e.g. Nov 2025" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_cert_num">Credential ID</label>
+                        <input type="text" id="modal_cert_num" class="form-input" placeholder="e.g. AWS-CCP-10293847">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modal_cert_url">Verification URL</label>
+                        <input type="url" id="modal_cert_url" class="form-input" placeholder="https://aws.amazon.com/verify/...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="certificateModalSubmitBtn">Save Certificate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT CONTACT CHANNEL -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title" id="contactModalTitle">Add Contact Channel</h3>
+                <button type="button" class="btn-icon" data-modal-close aria-label="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="contactModalForm">
+                <input type="hidden" id="contact_modal_id" value="">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="contact_modal_name">Channel Name</label>
+                        <input type="text" id="contact_modal_name" class="form-input" placeholder="e.g. GitHub, LinkedIn, Email, Phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="contact_modal_type">Channel Type</label>
+                        <select id="contact_modal_type" class="form-select" required>
+                            <option value="url">URL / Web Link</option>
+                            <option value="email">Email Address</option>
+                            <option value="phone_no">Phone Number</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="contact_modal_info">Contact Value / URL / Address</label>
+                        <input type="text" id="contact_modal_info" class="form-input" placeholder="https://... or email@... or +63..." required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="contactModalSubmitBtn">Save Channel</button>
                 </div>
             </form>
         </div>
