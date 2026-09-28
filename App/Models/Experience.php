@@ -1,7 +1,7 @@
 <?php
 
-class BasicInfo {
-    private string $tableName = "my_basic_info";
+class Experience {
+    private string $tableName = "my_experience";
     private $conn;
 
     public function __construct($db) {

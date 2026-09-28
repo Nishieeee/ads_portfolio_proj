@@ -1,7 +1,7 @@
 <?php
 
-class BasicInfo {
-    private string $tableName = "my_basic_info";
+class PageSection {
+    private string $tableName = "page_sections";
     private $conn;
 
     public function __construct($db) {

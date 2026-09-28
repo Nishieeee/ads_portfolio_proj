@@ -1,13 +1,13 @@
 <?php
 
-class BasicInfoController {
+class SiteSettingController {
     private $conn;
 
     public function __construct($db) {
         $this->conn = $db;
     }
 
-    public function get() {
+    public function getAll() {
         return;
     }
 
