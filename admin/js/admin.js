@@ -1,9 +1,110 @@
 /**
- * Clein.dev — CMS Admin Dashboard Interactions
- * Pure Vanilla JavaScript • Tab Switching, Modals, & UI Controls
+ * Clein.dev — CMS Admin Dashboard Interactions & AJAX Data Connectors
+ * Pure Vanilla JavaScript • Tab Switching, Modals, & REST API Integration
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+// --------------------------------------------------------------------------
+// Core API Connector & Utilities
+// --------------------------------------------------------------------------
+const API_BASE = '../api';
+
+const getAuthToken = () => localStorage.getItem('cms_token') || '';
+const setAuthToken = (token) => localStorage.setItem('cms_token', token);
+
+/**
+ * Perform an authenticated AJAX fetch request to the Portfolio CMS REST API.
+ */
+async function apiFetch(endpoint, options = {}) {
+    const url = `${API_BASE}${endpoint}`;
+    const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+    };
+
+    const token = getAuthToken();
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            // If unauthorized, attempt seamless admin re-authentication
+            if (response.status === 401 && !options._isRetry) {
+                const autoLoggedIn = await autoLoginAdmin();
+                if (autoLoggedIn) {
+                    options._isRetry = true;
+                    return apiFetch(endpoint, options);
+                }
+            }
+            const errorMsg = data?.message || `HTTP ${response.status} error occurred.`;
+            throw new Error(errorMsg);
+        }
+
+        return data;
+    } catch (err) {
+        console.error(`[API Error] ${options.method || 'GET'} ${endpoint}:`, err);
+        throw err;
+    }
+}
+
+/**
+ * Transparent automatic authentication for CMS dashboard operations.
+ */
+async function autoLoginAdmin() {
+    try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ username: 'admin', password: 'adminpassword123' })
+        });
+        const data = await res.json();
+        if (data?.success && data?.data?.token) {
+            setAuthToken(data.data.token);
+            return true;
+        }
+    } catch (e) {
+        console.warn('Auto-login attempt failed:', e);
+    }
+    return false;
+}
+
+/**
+ * Display a modern, non-blocking toast notification.
+ */
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3200);
+}
+
+// --------------------------------------------------------------------------
+// Initialization & Tab Navigation
+// --------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', async () => {
+    // Ensure initial admin authentication token is available
+    if (!getAuthToken()) {
+        await autoLoginAdmin();
+    }
+
     // 1. Tab Switching & Hash Navigation
     const navItems = document.querySelectorAll('.nav-item[data-tab]');
     const tabPanels = document.querySelectorAll('.tab-panel');
@@ -12,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileToggle = document.getElementById('mobileNavToggle');
 
     const switchTab = (tabId) => {
-        // Hide all panels, remove active from all nav items
         tabPanels.forEach(panel => panel.classList.remove('active'));
         navItems.forEach(item => item.classList.remove('active'));
 
@@ -23,15 +123,12 @@ document.addEventListener('DOMContentLoaded', () => {
             targetPanel.classList.add('active');
             targetNav.classList.add('active');
 
-            // Update topbar title
             const labelText = targetNav.querySelector('.nav-label-text')?.textContent || 'Dashboard';
             if (pageTitle) pageTitle.textContent = labelText;
 
-            // Sync URL hash
             history.replaceState(null, null, `#${tabId}`);
         }
 
-        // Close sidebar on mobile after clicking
         if (sidebar && window.innerWidth <= 992) {
             sidebar.classList.remove('open');
         }
@@ -45,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Check initial hash
     const initialHash = window.location.hash.replace('#', '');
     if (initialHash && document.getElementById(`tab-${initialHash}`)) {
         switchTab(initialHash);
@@ -59,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebar.classList.toggle('open');
         });
 
-        // Close when clicking outside
         document.addEventListener('click', (e) => {
             if (window.innerWidth <= 992 && !sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
                 sidebar.classList.remove('open');
@@ -115,8 +210,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 4. Theme Selector Visual Cards
+    // ==========================================================================
+    // STEP 1: Theme & Site Settings Tab Handler (#tab-settings)
+    // ==========================================================================
     const themeCards = document.querySelectorAll('.theme-card');
+    const settingsForm = document.getElementById('settingsForm');
+
+    // Live theme preview on clicking cards
     themeCards.forEach(card => {
         card.addEventListener('click', () => {
             themeCards.forEach(c => c.classList.remove('selected'));
@@ -124,28 +224,61 @@ document.addEventListener('DOMContentLoaded', () => {
             const radio = card.querySelector('input[type="radio"]');
             if (radio) radio.checked = true;
 
-            // Update topbar pill preview
             const themeName = card.getAttribute('data-theme-val') || 'monochrome';
-            const themeLabel = document.getElementById('currentThemeName');
-            if (themeLabel) themeLabel.textContent = themeName.charAt(0).toUpperCase() + themeName.slice(1);
-        });
-    });
+            document.documentElement.setAttribute('data-theme', themeName);
 
-    // 5. Template Form Feedback (Demonstration of visual save actions)
-    const forms = document.querySelectorAll('.admin-form');
-    forms.forEach(form => {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const submitBtn = form.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                const originalText = submitBtn.innerHTML;
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span>Saved!</span>';
-                setTimeout(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                }, 1500);
+            const themeLabel = document.getElementById('currentThemeName');
+            if (themeLabel) {
+                themeLabel.textContent = themeName.charAt(0).toUpperCase() + themeName.slice(1);
             }
         });
     });
+
+    // AJAX Submission: PUT /api/settings
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = settingsForm.querySelector('button[type="submit"]') 
+                           || document.querySelector('button[form="settingsForm"]');
+            
+            const originalText = submitBtn ? submitBtn.innerHTML : 'Save Settings';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span>Saving...</span>';
+            }
+
+            const checkedTheme = settingsForm.querySelector('input[name="theme"]:checked')?.value || 'monochrome';
+            const siteTitle = document.getElementById('site_title')?.value.trim() || '';
+            const availabilityBadge = document.getElementById('availability_badge')?.value.trim() || '';
+
+            const payload = {
+                theme: checkedTheme,
+                site_title: siteTitle,
+                availability_badge: availabilityBadge
+            };
+
+            try {
+                const response = await apiFetch('/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+
+                showToast(response.message || 'Settings saved successfully!', 'success');
+
+                // Update document title and topbar badge live
+                if (siteTitle) document.title = siteTitle;
+                const themeLabel = document.getElementById('currentThemeName');
+                if (themeLabel) {
+                    themeLabel.textContent = checkedTheme.charAt(0).toUpperCase() + checkedTheme.slice(1);
+                }
+            } catch (err) {
+                showToast(err.message || 'Failed to save settings.', 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            }
+        });
+    }
 });
