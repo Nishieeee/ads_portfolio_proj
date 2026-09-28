@@ -479,6 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 avatar_url: document.getElementById('avatar_url')?.value.trim() || '',
                 resume_url: document.getElementById('resume_url')?.value.trim() || '',
                 tagline: document.getElementById('tagline')?.value.trim() || '',
+                bio_greeting: document.getElementById('bio_greeting')?.value.trim() || "Hi, I'm Clein!",
                 bio_paragraphs: document.getElementById('bio_paragraphs')?.value.trim() || ''
             };
 

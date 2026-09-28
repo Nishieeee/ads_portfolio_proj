@@ -816,8 +816,12 @@ $activeTheme = $siteSettings['theme'] ?? 'monochrome';
                                     <textarea id="tagline" name="tagline" class="form-textarea" rows="2"><?= htmlspecialchars($basicInfo['tagline'] ?? '') ?></textarea>
                                 </div>
                                 <div class="form-group">
+                                    <label class="form-label" for="bio_greeting">About Bio Greeting</label>
+                                    <input type="text" id="bio_greeting" name="bio_greeting" class="form-input" value="<?= htmlspecialchars($basicInfo['bio_greeting'] ?? "Hi, I'm Clein!") ?>" placeholder="Hi, I'm Clein!">
+                                </div>
+                                <div class="form-group">
                                     <label class="form-label" for="bio_paragraphs">About Bio Narrative</label>
-                                    <textarea id="bio_paragraphs" name="bio_paragraphs" class="form-textarea" rows="4"><?= htmlspecialchars(is_array($basicInfo['bio_paragraphs'] ?? null) ? implode("\n\n", $basicInfo['bio_paragraphs']) : ($basicInfo['bio_paragraphs'] ?? '')) ?></textarea>
+                                    <textarea id="bio_paragraphs" name="bio_paragraphs" class="form-textarea" rows="5" placeholder="Write biography paragraphs separated by a blank line..."><?= htmlspecialchars(is_array($basicInfo['bio_paragraphs'] ?? null) ? implode("\n\n", $basicInfo['bio_paragraphs']) : ($basicInfo['bio_paragraphs'] ?? '')) ?></textarea>
                                 </div>
                             </div>
                         </div>

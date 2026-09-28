@@ -40,7 +40,9 @@ try {
             if (is_array($decoded)) {
                 $basicInfo['bio_paragraphs'] = $decoded;
             } else {
-                $basicInfo['bio_paragraphs'] = array_values(array_filter(array_map('trim', explode("\n\n", $basicInfo['bio_paragraphs']))));
+                $normalized = str_replace(["\r\n", "\r"], "\n", $basicInfo['bio_paragraphs']);
+                $paragraphs = array_values(array_filter(array_map('trim', preg_split('/\n{2,}/', $normalized))));
+                $basicInfo['bio_paragraphs'] = !empty($paragraphs) ? $paragraphs : [trim($normalized)];
             }
         }
 

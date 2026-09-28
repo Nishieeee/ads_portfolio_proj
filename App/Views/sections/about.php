@@ -33,8 +33,14 @@ $title = !empty($sec['title']) ? $sec['title'] : 'About Me';
             <div class="about-text-card">
                 <h3 class="about-heading"><?= htmlspecialchars($basicInfo['bio_greeting'] ?? "Hi, I'm Clein!") ?></h3>
                 <div class="about-paragraphs">
-                    <?php if (!empty($basicInfo['bio_paragraphs'])): ?>
-                        <?php foreach ($basicInfo['bio_paragraphs'] as $para): ?>
+                    <?php 
+                    $paragraphs = $basicInfo['bio_paragraphs'] ?? [];
+                    if (is_string($paragraphs)) {
+                        $normalized = str_replace(["\r\n", "\r"], "\n", $paragraphs);
+                        $paragraphs = array_values(array_filter(array_map('trim', preg_split('/\n{2,}/', $normalized))));
+                    }
+                    if (!empty($paragraphs)): ?>
+                        <?php foreach ($paragraphs as $para): ?>
                             <p><?= htmlspecialchars($para) ?></p>
                         <?php endforeach; ?>
                     <?php else: ?>

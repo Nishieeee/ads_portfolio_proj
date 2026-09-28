@@ -14,6 +14,8 @@ class BasicInfo {
     public ?string $tagline = null;
     public ?string $avatar_url = null;
     public ?string $resume_url = null;
+    public ?string $bio_greeting = null;
+    public ?string $bio_paragraphs = null;
 
     /**
      * Constructor accepting PDO database instance
@@ -71,10 +73,16 @@ class BasicInfo {
      * @return int|false Returns lastInsertId or false on failure
      */
     public function create(array $data): int|false {
+        $bioGreeting = $data['bio_greeting'] ?? "Hi, I'm Clein!";
+        $bioParagraphs = $data['bio_paragraphs'] ?? '';
+        if (is_array($bioParagraphs)) {
+            $bioParagraphs = json_encode($bioParagraphs);
+        }
+
         $query = "INSERT INTO {$this->tableName} 
-                    (first_name, last_name, middle_name, birth_date, role_title, tagline, avatar_url, resume_url)
+                    (first_name, last_name, middle_name, birth_date, role_title, tagline, avatar_url, resume_url, bio_greeting, bio_paragraphs)
                   VALUES 
-                    (:first_name, :last_name, :middle_name, :birth_date, :role_title, :tagline, :avatar_url, :resume_url)";
+                    (:first_name, :last_name, :middle_name, :birth_date, :role_title, :tagline, :avatar_url, :resume_url, :bio_greeting, :bio_paragraphs)";
 
         $stmt = $this->conn->prepare($query);
 
@@ -86,6 +94,8 @@ class BasicInfo {
         $stmt->bindValue(':tagline', trim($data['tagline'] ?? ''));
         $stmt->bindValue(':avatar_url', $data['avatar_url'] ?? null);
         $stmt->bindValue(':resume_url', $data['resume_url'] ?? null);
+        $stmt->bindValue(':bio_greeting', $bioGreeting);
+        $stmt->bindValue(':bio_paragraphs', $bioParagraphs);
 
         if ($stmt->execute()) {
             return (int) $this->conn->lastInsertId();
@@ -116,15 +126,23 @@ class BasicInfo {
             return false;
         }
 
+        $bioGreeting = $data['bio_greeting'] ?? "Hi, I'm Clein!";
+        $bioParagraphs = $data['bio_paragraphs'] ?? '';
+        if (is_array($bioParagraphs)) {
+            $bioParagraphs = json_encode($bioParagraphs);
+        }
+
         $query = "UPDATE {$this->tableName} SET 
-                    first_name  = :first_name,
-                    last_name   = :last_name,
-                    middle_name = :middle_name,
-                    birth_date  = :birth_date,
-                    role_title  = :role_title,
-                    tagline     = :tagline,
-                    avatar_url  = :avatar_url,
-                    resume_url  = :resume_url
+                    first_name     = :first_name,
+                    last_name      = :last_name,
+                    middle_name    = :middle_name,
+                    birth_date     = :birth_date,
+                    role_title     = :role_title,
+                    tagline        = :tagline,
+                    avatar_url     = :avatar_url,
+                    resume_url     = :resume_url,
+                    bio_greeting   = :bio_greeting,
+                    bio_paragraphs = :bio_paragraphs
                   WHERE id = :id";
 
         $stmt = $this->conn->prepare($query);
@@ -137,6 +155,8 @@ class BasicInfo {
         $stmt->bindValue(':tagline', trim($data['tagline'] ?? ''));
         $stmt->bindValue(':avatar_url', $data['avatar_url'] ?? null);
         $stmt->bindValue(':resume_url', $data['resume_url'] ?? null);
+        $stmt->bindValue(':bio_greeting', $bioGreeting);
+        $stmt->bindValue(':bio_paragraphs', $bioParagraphs);
         $stmt->bindValue(':id', $targetId, PDO::PARAM_INT);
 
         return $stmt->execute();
@@ -163,15 +183,17 @@ class BasicInfo {
      * @return void
      */
     private function populate(array $row): void {
-        $this->id          = isset($row['id']) ? (int) $row['id'] : null;
-        $this->first_name  = $row['first_name'] ?? null;
-        $this->last_name   = $row['last_name'] ?? null;
-        $this->middle_name = $row['middle_name'] ?? null;
-        $this->birth_date  = $row['birth_date'] ?? null;
-        $this->role_title  = $row['role_title'] ?? null;
-        $this->tagline     = $row['tagline'] ?? null;
-        $this->avatar_url  = $row['avatar_url'] ?? null;
-        $this->resume_url  = $row['resume_url'] ?? null;
+        $this->id             = isset($row['id']) ? (int) $row['id'] : null;
+        $this->first_name     = $row['first_name'] ?? null;
+        $this->last_name      = $row['last_name'] ?? null;
+        $this->middle_name    = $row['middle_name'] ?? null;
+        $this->birth_date     = $row['birth_date'] ?? null;
+        $this->role_title     = $row['role_title'] ?? null;
+        $this->tagline        = $row['tagline'] ?? null;
+        $this->avatar_url     = $row['avatar_url'] ?? null;
+        $this->resume_url     = $row['resume_url'] ?? null;
+        $this->bio_greeting   = $row['bio_greeting'] ?? null;
+        $this->bio_paragraphs = $row['bio_paragraphs'] ?? null;
     }
 
     /**

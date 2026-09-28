@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS my_basic_info (
     role_title VARCHAR(100) NOT NULL,
     tagline TEXT NOT NULL,
     avatar_url VARCHAR(255),
-    resume_url VARCHAR(255)
+    resume_url VARCHAR(255),
+    bio_greeting VARCHAR(255) DEFAULT "Hi, I'm Clein!",
+    bio_paragraphs TEXT
 );
 
 -- 4. Contact Channels
