@@ -19,7 +19,8 @@ $certificates   = [];
 $inquiries      = [];
 
 try {
-    $db = Database::getInstance()->getConnection();
+    $database = new Database();
+    $db = $database->getConnection();
     if ($db) {
         $stmt = $db->query("SELECT * FROM site_settings WHERE id = 1 LIMIT 1");
         $dbSettings = $stmt->fetch();
@@ -85,10 +86,25 @@ try {
         $contacts       = $portfolioData['my_contact_info'] ?? [];
         $experiences    = $portfolioData['my_experience'] ?? [];
         $projects       = $portfolioData['my_projects'] ?? [];
-        $skillsGrouped  = $portfolioData['my_skills'] ?? [];
         $educations     = $portfolioData['my_education'] ?? [];
         $certificates   = $portfolioData['my_certificates'] ?? [];
         $inquiries      = $portfolioData['contact_inquiries'] ?? [];
+
+        foreach ($portfolioData['my_skills'] ?? [] as $k => $grp) {
+            $cat = $grp['skill_category'] ?? $grp['category'] ?? 'technical';
+            $lbl = $grp['category_label'] ?? $grp['label'] ?? '';
+            $rawSkills = $grp['skills'] ?? [];
+            if (is_string($rawSkills)) {
+                $rawSkills = array_values(array_filter(array_map('trim', explode(',', $rawSkills))));
+            }
+            $skillsGrouped[] = [
+                'id' => (int)($grp['id'] ?? ($k + 1)),
+                'skill_category' => $cat,
+                'category_label' => $lbl,
+                'skills' => $rawSkills,
+                'skills_list' => is_array($rawSkills) ? implode(', ', $rawSkills) : (string)$rawSkills
+            ];
+        }
     }
 }
 

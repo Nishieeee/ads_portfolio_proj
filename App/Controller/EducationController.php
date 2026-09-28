@@ -48,10 +48,14 @@ class EducationController extends BaseController {
 
         $input = $this->getJsonInput();
 
-        $required = ['school_name', 'course', 'date_start', 'date_display'];
+        $required = ['school_name', 'course', 'date_display'];
         $missing = $this->validateRequired($input, $required);
         if (!empty($missing)) {
             $this->sendError('Missing required education fields.', $missing, 400);
+        }
+
+        if (empty($input['date_start'])) {
+            $input['date_start'] = date('Y-m-d');
         }
 
         $this->validateDates($input);

@@ -57,10 +57,14 @@ class ProjectController extends BaseController {
 
         $input = $this->getJsonInput();
 
-        $required = ['project_name', 'description', 'technologies', 'date_start'];
+        $required = ['project_name', 'description', 'technologies'];
         $missing = $this->validateRequired($input, $required);
         if (!empty($missing)) {
             $this->sendError('Missing required project fields.', $missing, 400);
+        }
+
+        if (empty($input['date_start'])) {
+            $input['date_start'] = date('Y-m-d');
         }
 
         $this->validateDates($input);

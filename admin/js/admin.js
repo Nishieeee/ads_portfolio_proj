@@ -6,50 +6,17 @@
 // --------------------------------------------------------------------------
 // Core API Connector & Utilities
 // --------------------------------------------------------------------------
-const API_BASE = '../api';
+const API_BASE = (() => {
+    const loc = window.location.pathname;
+    const adminIdx = loc.indexOf('/admin');
+    if (adminIdx !== -1) {
+        return loc.substring(0, adminIdx) + '/api';
+    }
+    return '../api';
+})();
 
 const getAuthToken = () => localStorage.getItem('cms_token') || '';
 const setAuthToken = (token) => localStorage.setItem('cms_token', token);
-
-/**
- * Perform an authenticated AJAX fetch request to the Portfolio CMS REST API.
- */
-async function apiFetch(endpoint, options = {}) {
-    const url = `${API_BASE}${endpoint}`;
-    const headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-    };
-
-    const token = getAuthToken();
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    try {
-        const response = await fetch(url, { ...options, headers });
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok) {
-            // If unauthorized, attempt seamless admin re-authentication
-            if (response.status === 401 && !options._isRetry) {
-                const autoLoggedIn = await autoLoginAdmin();
-                if (autoLoggedIn) {
-                    options._isRetry = true;
-                    return apiFetch(endpoint, options);
-                }
-            }
-            const errorMsg = data?.message || `HTTP ${response.status} error occurred.`;
-            throw new Error(errorMsg);
-        }
-
-        return data;
-    } catch (err) {
-        console.error(`[API Error] ${options.method || 'GET'} ${endpoint}:`, err);
-        throw err;
-    }
-}
 
 /**
  * Transparent automatic authentication for CMS dashboard operations.
@@ -64,12 +31,65 @@ async function autoLoginAdmin() {
         const data = await res.json();
         if (data?.success && data?.data?.token) {
             setAuthToken(data.data.token);
-            return true;
+            return data.data.token;
         }
     } catch (e) {
         console.warn('Auto-login attempt failed:', e);
     }
-    return false;
+    return null;
+}
+
+/**
+ * Perform an authenticated AJAX fetch request to the Portfolio CMS REST API.
+ */
+async function apiFetch(endpoint, options = {}) {
+    const url = `${API_BASE}${endpoint}`;
+    
+    let token = getAuthToken();
+    if (!token) {
+        token = await autoLoginAdmin();
+    }
+
+    const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            // If unauthorized, clear cached token, attempt re-login, and retry once
+            if (response.status === 401 && !options._isRetry) {
+                localStorage.removeItem('cms_token');
+                const newToken = await autoLoginAdmin();
+                if (newToken) {
+                    const retryOptions = {
+                        ...options,
+                        _isRetry: true,
+                        headers: {
+                            ...(options.headers || {}),
+                            'Authorization': `Bearer ${newToken}`
+                        }
+                    };
+                    return apiFetch(endpoint, retryOptions);
+                }
+            }
+            const errorMsg = data?.message || `HTTP ${response.status} error occurred.`;
+            throw new Error(errorMsg);
+        }
+
+        return data;
+    } catch (err) {
+        console.error(`[API Error] ${options.method || 'GET'} ${endpoint}:`, err);
+        throw err;
+    }
 }
 
 /**
@@ -588,24 +608,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (editBtn) {
                 const id = editBtn.getAttribute('data-id');
+                let proj = null;
                 const rawData = editBtn.getAttribute('data-project');
-                let proj = {};
-                try {
-                    proj = JSON.parse(rawData);
-                } catch (err) {
-                    console.error('Failed to parse project data:', err);
+                if (rawData) {
+                    try {
+                        proj = JSON.parse(rawData);
+                    } catch (err) {
+                        console.warn('Failed to parse data-project JSON:', err);
+                    }
                 }
 
-                document.getElementById('modal_project_id').value = id || proj.id || '';
-                document.getElementById('modal_project_name').value = proj.project_name || '';
-                document.getElementById('modal_project_sub').value = proj.subtitle || '';
-                document.getElementById('modal_project_desc').value = proj.description || '';
-                document.getElementById('modal_project_tech').value = proj.technologies || '';
-                document.getElementById('modal_project_repo').value = proj.github_repo || '';
-                document.getElementById('modal_project_live').value = proj.url || '';
-                document.getElementById('modal_project_badge').value = proj.badge || '';
-                document.getElementById('projectModalTitle').textContent = 'Edit Project Details';
-                openModal('projectModal');
+                if (!proj && id) {
+                    try {
+                        const res = await apiFetch(`/projects/${id}`);
+                        proj = res.data;
+                    } catch (err) {
+                        showToast('Failed to load project details.', 'error');
+                        return;
+                    }
+                }
+
+                if (proj) {
+                    document.getElementById('modal_project_id').value = id || proj.id || '';
+                    document.getElementById('modal_project_name').value = proj.project_name || '';
+                    document.getElementById('modal_project_sub').value = proj.subtitle || '';
+                    document.getElementById('modal_project_desc').value = proj.description || '';
+                    document.getElementById('modal_project_tech').value = proj.technologies || '';
+                    document.getElementById('modal_project_repo').value = proj.github_repo || '';
+                    document.getElementById('modal_project_live').value = proj.url || '';
+                    document.getElementById('modal_project_badge').value = proj.badge || '';
+                    document.getElementById('projectModalTitle').textContent = 'Edit Project Details';
+                    openModal('projectModal');
+                }
             }
 
             if (deleteBtn) {
@@ -758,24 +792,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (editBtn) {
                 const id = editBtn.getAttribute('data-id');
+                let exp = null;
                 const rawData = editBtn.getAttribute('data-exp');
-                let exp = {};
-                try {
-                    exp = JSON.parse(rawData);
-                } catch (err) {
-                    console.error('Failed to parse experience data:', err);
+                if (rawData) {
+                    try {
+                        exp = JSON.parse(rawData);
+                    } catch (err) {
+                        console.warn('Failed to parse experience data:', err);
+                    }
                 }
 
-                document.getElementById('modal_exp_id').value = id || exp.id || '';
-                document.getElementById('modal_job_title').value = exp.job_title || '';
-                document.getElementById('modal_company').value = exp.company_name || '';
-                document.getElementById('modal_exp_loc').value = exp.location || '';
-                document.getElementById('modal_exp_dates').value = exp.date_display || '';
-                document.getElementById('modal_desc_1').value = exp.description_1 || '';
-                document.getElementById('modal_desc_2').value = exp.description_2 || '';
-                document.getElementById('modal_desc_3').value = exp.description_3 || '';
-                document.getElementById('experienceModalTitle').textContent = 'Edit Experience Entry';
-                openModal('experienceModal');
+                if (!exp && id) {
+                    try {
+                        const res = await apiFetch(`/experience/${id}`);
+                        exp = res.data;
+                    } catch (err) {
+                        showToast('Failed to load experience details.', 'error');
+                        return;
+                    }
+                }
+
+                if (exp) {
+                    document.getElementById('modal_exp_id').value = id || exp.id || '';
+                    document.getElementById('modal_job_title').value = exp.job_title || '';
+                    document.getElementById('modal_company').value = exp.company_name || '';
+                    document.getElementById('modal_exp_loc').value = exp.location || '';
+                    document.getElementById('modal_exp_dates').value = exp.date_display || '';
+                    document.getElementById('modal_desc_1').value = exp.description_1 || '';
+                    document.getElementById('modal_desc_2').value = exp.description_2 || '';
+                    document.getElementById('modal_desc_3').value = exp.description_3 || '';
+                    document.getElementById('experienceModalTitle').textContent = 'Edit Experience Entry';
+                    openModal('experienceModal');
+                }
             }
 
             if (deleteBtn) {
@@ -1085,17 +1133,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (editBtn) {
                 const id = editBtn.getAttribute('data-id');
+                let edu = null;
                 const raw = editBtn.getAttribute('data-edu');
-                let edu = {};
-                try { edu = JSON.parse(raw); } catch (err) { console.error(err); }
+                if (raw) {
+                    try { edu = JSON.parse(raw); } catch (err) { console.warn(err); }
+                }
 
-                document.getElementById('modal_edu_id').value = id || edu.id || '';
-                document.getElementById('modal_edu_school').value = edu.school_name || '';
-                document.getElementById('modal_edu_course').value = edu.course || '';
-                document.getElementById('modal_edu_dates').value = edu.date_display || '';
-                document.getElementById('modal_edu_focus').value = edu.focus_areas || '';
-                document.getElementById('educationModalTitle').textContent = 'Edit Education Entry';
-                openModal('educationModal');
+                if (!edu && id) {
+                    try {
+                        const res = await apiFetch(`/education/${id}`);
+                        edu = res.data;
+                    } catch (err) {
+                        showToast('Failed to load education details.', 'error');
+                        return;
+                    }
+                }
+
+                if (edu) {
+                    document.getElementById('modal_edu_id').value = id || edu.id || '';
+                    document.getElementById('modal_edu_school').value = edu.school_name || '';
+                    document.getElementById('modal_edu_course').value = edu.course || '';
+                    document.getElementById('modal_edu_dates').value = edu.date_display || '';
+                    document.getElementById('modal_edu_focus').value = edu.focus_areas || '';
+                    document.getElementById('educationModalTitle').textContent = 'Edit Education Entry';
+                    openModal('educationModal');
+                }
             }
 
             if (deleteBtn) {
@@ -1220,18 +1282,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (editBtn) {
                 const id = editBtn.getAttribute('data-id');
+                let cert = null;
                 const raw = editBtn.getAttribute('data-cert');
-                let cert = {};
-                try { cert = JSON.parse(raw); } catch (err) { console.error(err); }
+                if (raw) {
+                    try { cert = JSON.parse(raw); } catch (err) { console.warn(err); }
+                }
 
-                document.getElementById('modal_cert_id').value = id || cert.id || '';
-                document.getElementById('modal_cert_title').value = cert.title || '';
-                document.getElementById('modal_cert_issuer').value = cert.issuer || '';
-                document.getElementById('modal_cert_date').value = cert.date_display || '';
-                document.getElementById('modal_cert_num').value = cert.cert_id || '';
-                document.getElementById('modal_cert_url').value = cert.cert_url || '';
-                document.getElementById('certificateModalTitle').textContent = 'Edit Certification';
-                openModal('certificateModal');
+                if (!cert && id) {
+                    try {
+                        const res = await apiFetch(`/certificates/${id}`);
+                        cert = res.data;
+                    } catch (err) {
+                        showToast('Failed to load certificate details.', 'error');
+                        return;
+                    }
+                }
+
+                if (cert) {
+                    document.getElementById('modal_cert_id').value = id || cert.id || '';
+                    document.getElementById('modal_cert_title').value = cert.title || '';
+                    document.getElementById('modal_cert_issuer').value = cert.issuer || '';
+                    document.getElementById('modal_cert_date').value = cert.date_display || '';
+                    document.getElementById('modal_cert_num').value = cert.cert_id || '';
+                    document.getElementById('modal_cert_url').value = cert.cert_url || '';
+                    document.getElementById('certificateModalTitle').textContent = 'Edit Certification';
+                    openModal('certificateModal');
+                }
             }
 
             if (deleteBtn) {

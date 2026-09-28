@@ -48,10 +48,14 @@ class ExperienceController extends BaseController {
 
         $input = $this->getJsonInput();
 
-        $required = ['job_title', 'company_name', 'description_1', 'description_2', 'description_3', 'date_start', 'date_display'];
+        $required = ['job_title', 'company_name', 'description_1', 'date_display'];
         $missing = $this->validateRequired($input, $required);
         if (!empty($missing)) {
             $this->sendError('Missing required experience fields.', $missing, 400);
+        }
+
+        if (empty($input['date_start'])) {
+            $input['date_start'] = date('Y-m-d');
         }
 
         $this->validateDates($input);
