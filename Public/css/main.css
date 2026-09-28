@@ -5,9 +5,9 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Root Variables & Reset
+   1. Root Variables & Theme Presets
    -------------------------------------------------------------------------- */
-:root {
+:root, [data-theme="monochrome"] {
     --bg-main: #09090b;
     --bg-alt: #101014;
     --bg-card: #15151a;
@@ -38,6 +38,90 @@
     --transition-normal: 0.25s ease-in-out;
 
     --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Theme Preset: Midnight Slate / Indigo */
+[data-theme="midnight"] {
+    --bg-main: #0b0f19;
+    --bg-alt: #111827;
+    --bg-card: #162032;
+    --bg-card-hover: #1e293b;
+    --bg-header-scrolled: #0b0f19;
+
+    --border-subtle: #1e293b;
+    --border-medium: #334155;
+    --border-accent: #818cf8;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-inverted: #0b0f19;
+
+    --accent-primary: #818cf8;
+    --accent-secondary: #c7d2fe;
+}
+
+/* Theme Preset: Emerald / Terminal Cyber */
+[data-theme="emerald"] {
+    --bg-main: #05130e;
+    --bg-alt: #0a1f18;
+    --bg-card: #0f2e24;
+    --bg-card-hover: #143d30;
+    --bg-header-scrolled: #05130e;
+
+    --border-subtle: #164033;
+    --border-medium: #1f5746;
+    --border-accent: #34d399;
+
+    --text-primary: #f0fdf4;
+    --text-secondary: #86efac;
+    --text-muted: #4ade80;
+    --text-inverted: #05130e;
+
+    --accent-primary: #34d399;
+    --accent-secondary: #a7f3d0;
+}
+
+/* Theme Preset: Amber / Warm Minimalist */
+[data-theme="amber"] {
+    --bg-main: #12100e;
+    --bg-alt: #1a1714;
+    --bg-card: #24201c;
+    --bg-card-hover: #302b26;
+    --bg-header-scrolled: #12100e;
+
+    --border-subtle: #332d27;
+    --border-medium: #4a423a;
+    --border-accent: #fbbf24;
+
+    --text-primary: #fefce8;
+    --text-secondary: #d6d3d1;
+    --text-muted: #a8a29e;
+    --text-inverted: #12100e;
+
+    --accent-primary: #fbbf24;
+    --accent-secondary: #fde68a;
+}
+
+/* Theme Preset: Clean Minimal Paper Light */
+[data-theme="light"] {
+    --bg-main: #ffffff;
+    --bg-alt: #f8fafc;
+    --bg-card: #f1f5f9;
+    --bg-card-hover: #e2e8f0;
+    --bg-header-scrolled: #ffffff;
+
+    --border-subtle: #e2e8f0;
+    --border-medium: #cbd5e1;
+    --border-accent: #0f172a;
+
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-inverted: #ffffff;
+
+    --accent-primary: #0f172a;
+    --accent-secondary: #334155;
 }
 
 *, *::before, *::after {

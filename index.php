@@ -1,19 +1,33 @@
 <?php
-// Load data from portfolio_data.json (strictly mirrors portfolio_cms.sql tables)
+/**
+ * Clein.dev — Main Entrypoint & View Orchestrator
+ * Hybrid CMS Architecture: Dynamic Sections & Color Themes
+ */
+
+// 1. Data Loader (Currently reads from portfolio_data.json, strictly mapped to portfolio_cms database)
 $dataPath = __DIR__ . '/portfolio_data.json';
 $portfolioData = [];
 if (file_exists($dataPath)) {
     $portfolioData = json_decode(file_get_contents($dataPath), true) ?: [];
 }
 
-$basicInfo = $portfolioData['my_basic_info'] ?? [];
-$contacts = $portfolioData['my_contact_info'] ?? [];
-$experiences = $portfolioData['my_experience'] ?? [];
-$projects = $portfolioData['my_projects'] ?? [];
-$skillsGrouped = $portfolioData['my_skills'] ?? [];
-$educations = $portfolioData['my_education'] ?? [];
+// 2. Extract Data Entities
+$siteSettings = $portfolioData['site_settings'] ?? [
+    'theme' => 'monochrome',
+    'site_title' => 'Jhon Clein Pagarogan — Full-Stack Developer',
+    'availability_badge' => 'Available for Select Projects & Full-Time Roles'
+];
+
+$pageSections = $portfolioData['page_sections'] ?? [];
+$basicInfo    = $portfolioData['my_basic_info'] ?? [];
+$contacts     = $portfolioData['my_contact_info'] ?? [];
+$experiences  = $portfolioData['my_experience'] ?? [];
+$projects     = $portfolioData['my_projects'] ?? [];
+$skillsGrouped= $portfolioData['my_skills'] ?? [];
+$educations   = $portfolioData['my_education'] ?? [];
 $certificates = $portfolioData['my_certificates'] ?? [];
 
+// 3. Normalize Full Name
 $nameParts = array_filter([
     $basicInfo['first_name'] ?? 'Jhon Clein',
     $basicInfo['middle_name'] ?? '',
@@ -21,13 +35,19 @@ $nameParts = array_filter([
 ], fn($part) => trim($part) !== '');
 $fullName = implode(' ', $nameParts);
 
+// 4. Sort and Filter Active Page Sections (Hybrid CMS engine)
+$activeSections = array_filter($pageSections, fn($s) => !empty($s['is_visible']));
+usort($activeSections, fn($a, $b) => ($a['order_index'] ?? 0) <=> ($b['order_index'] ?? 0));
+
+$activeTheme = $siteSettings['theme'] ?? 'monochrome';
+$pageTitle   = $siteSettings['site_title'] ?? ($fullName . ' — Full-Stack Developer');
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="<?= htmlspecialchars($activeTheme) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($fullName) ?> — Full-Stack Developer</title>
+    <title><?= htmlspecialchars($pageTitle) ?></title>
     <meta name="description" content="<?= htmlspecialchars($basicInfo['tagline'] ?? 'Full-Stack Developer Portfolio') ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,459 +55,27 @@ $fullName = implode(' ', $nameParts);
     <link href="Public/css/main.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Sticky Glass Navigation -->
-    <header id="header_main">
-        <div class="nav-wrapper">
-            <a href="#hero" class="logo-link">
-                <span class="logo-bracket">&lt;</span>Clein<span class="logo-accent">.dev</span><span class="logo-bracket">/&gt;</span>
-            </a>
-
-            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-
-            <nav id="nav-container" aria-label="Main Navigation">
-                <ul id="nav-link-container">
-                    <li><a href="#about" class="nav-link">About</a></li>
-                    <li><a href="#experience" class="nav-link">Experience</a></li>
-                    <li><a href="#projects" class="nav-link">Projects</a></li>
-                    <li><a href="#skills" class="nav-link">Skills</a></li>
-                    <li><a href="#education" class="nav-link">Education</a></li>
-                    <li><a href="#contact" class="nav-link">Contact</a></li>
-                </ul>
-            </nav>
-
-            <div class="nav-cta-wrapper">
-                <a href="#contact" class="btn btn-sm btn-outline">Let's Connect</a>
-            </div>
-        </div>
-    </header>
+    <!-- Sticky Navigation Bar -->
+    <?php include __DIR__ . '/App/Views/layout/header.php'; ?>
 
     <main>
         <!-- Hero Section -->
-        <section id="hero" class="hero-section">
-            <div class="container hero-container">
-                <div class="hero-badge">
-                    <span class="pulse-dot"></span> Available for Select Projects & Full-Time Roles
-                </div>
+        <?php include __DIR__ . '/App/Views/layout/hero.php'; ?>
 
-                <h1 class="hero-name">
-                    <span class="hero-greeting">Hi, I'm</span>
-                    <span class="name-gradient"><?= htmlspecialchars($fullName) ?></span>
-                </h1>
-
-                <h2 class="hero-role"><?= htmlspecialchars($basicInfo['role_title'] ?? 'FULL-STACK DEVELOPER') ?></h2>
-
-                <p class="hero-tagline">
-                    <?= htmlspecialchars($basicInfo['tagline'] ?? 'Crafting premium digital experiences with clean code and high-performance backend architecture.') ?>
-                </p>
-
-                <div class="hero-actions">
-                    <a href="#projects" class="btn btn-primary">
-                        <span>Explore Projects</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
-                    </a>
-                    <a href="<?= htmlspecialchars($basicInfo['resume_url'] ?? 'Public/assets/Resume/Resume.md') ?>" target="_blank" class="btn btn-secondary">
-                        <span>View Resume</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    </a>
-                </div>
-
-            </div>
-        </section>
-
-        <!-- 1. About Section -->
-        <section id="about" class="section">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-kicker">Get to Know Me</span>
-                    <h2 class="section-title">About Me</h2>
-                </div>
-
-                <div class="about-grid">
-                    <div class="about-image-card">
-                        <div class="image-wrapper">
-                            <img src="<?= htmlspecialchars($basicInfo['avatar_url'] ?? 'Public/assets/images/image.png') ?>" alt="<?= htmlspecialchars($fullName) ?>" id="my-pic" class="avatar-img">
-                        </div>
-                    </div>
-
-                    <div class="about-text-card">
-                        <h3 class="about-heading"><?= htmlspecialchars($basicInfo['bio_greeting'] ?? "Hi, I'm Clein!") ?></h3>
-                        <div class="about-paragraphs">
-                            <?php if (!empty($basicInfo['bio_paragraphs'])): ?>
-                                <?php foreach ($basicInfo['bio_paragraphs'] as $para): ?>
-                                    <p><?= htmlspecialchars($para) ?></p>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <p>I am an aspiring Software Developer passionate about building impactful and user-centered web applications.</p>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="about-quick-facts">
-                            <div class="fact-box">
-                                <span class="fact-number">2026</span>
-                                <span class="fact-label">Hackathon Winner</span>
-                            </div>
-                            <div class="fact-box">
-                                <span class="fact-number">5+</span>
-                                <span class="fact-label">Full-Stack Projects</span>
-                            </div>
-                            <div class="fact-box">
-                                <span class="fact-number">100%</span>
-                                <span class="fact-label">Clean Code Focus</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2. Experience Section -->
-        <section id="experience" class="section section-alt">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-kicker">Career Path</span>
-                    <h2 class="section-title">Work Experience</h2>
-                </div>
-
-                <div class="timeline">
-                    <?php foreach ($experiences as $exp): ?>
-                        <div class="timeline-item">
-                            <div class="timeline-marker"></div>
-                            <div class="timeline-content">
-                                <div class="timeline-header">
-                                    <div>
-                                        <h3 class="timeline-role"><?= htmlspecialchars($exp['job_title'] ?? '') ?></h3>
-                                        <div class="timeline-company">
-                                            <span class="company-name"><?= htmlspecialchars($exp['company_name'] ?? '') ?></span>
-                                            <?php if (!empty($exp['location'])): ?>
-                                                <span class="company-loc">• <?= htmlspecialchars($exp['location']) ?></span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <span class="timeline-date"><?= htmlspecialchars($exp['date_display'] ?? '') ?></span>
-                                </div>
-                                <ul class="timeline-bullets">
-                                    <?php if (!empty($exp['description_1'])): ?>
-                                        <li><?= htmlspecialchars($exp['description_1']) ?></li>
-                                    <?php endif; ?>
-                                    <?php if (!empty($exp['description_2'])): ?>
-                                        <li><?= htmlspecialchars($exp['description_2']) ?></li>
-                                    <?php endif; ?>
-                                    <?php if (!empty($exp['description_3'])): ?>
-                                        <li><?= htmlspecialchars($exp['description_3']) ?></li>
-                                    <?php endif; ?>
-                                </ul>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </section>
-
-        <!-- 3. Key Projects Section -->
-        <section id="projects" class="section">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-kicker">Featured Engineering</span>
-                    <h2 class="section-title">Key Projects</h2>
-                    <p class="section-subtitle">Real-world applications demonstrating high concurrency, robust architecture, and modern interfaces.</p>
-                </div>
-
-                <div class="projects-grid">
-                    <?php foreach ($projects as $proj): 
-                        $isFeatured = !empty($proj['featured']);
-                    ?>
-                        <article class="project-card <?= $isFeatured ? 'project-card-featured' : '' ?>">
-                            <div class="project-card-inner">
-                                <?php if (!empty($proj['badge'])): ?>
-                                    <div class="project-badge-wrapper">
-                                        <span class="project-badge"><?= htmlspecialchars($proj['badge']) ?></span>
-                                    </div>
-                                <?php endif; ?>
-
-                                <div class="project-links">
-                                    <?php if (!empty($proj['github_repo'])): ?>
-                                        <a href="<?= htmlspecialchars($proj['github_repo']) ?>" target="_blank" rel="noopener noreferrer" class="icon-link" aria-label="GitHub Repository">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                                        </a>
-                                    <?php endif; ?>
-                                    <?php if (!empty($proj['url'])): ?>
-                                        <a href="<?= htmlspecialchars($proj['url']) ?>" target="_blank" rel="noopener noreferrer" class="icon-link" aria-label="Live Application">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-
-                                <h3 class="project-title"><?= htmlspecialchars($proj['project_name']) ?></h3>
-                                <?php if (!empty($proj['subtitle'])): ?>
-                                    <div class="project-subtitle"><?= htmlspecialchars($proj['subtitle']) ?></div>
-                                <?php endif; ?>
-
-                                <p class="project-desc"><?= htmlspecialchars($proj['description']) ?></p>
-
-                                <div class="project-tech-tags">
-                                    <?php 
-                                    $tags = array_map('trim', explode(',', $proj['technologies'] ?? ''));
-                                    foreach ($tags as $tag): 
-                                        if ($tag !== ''): ?>
-                                            <span class="tech-tag"><?= htmlspecialchars($tag) ?></span>
-                                    <?php endif; endforeach; ?>
-                                </div>
-
-                                <div class="project-footer">
-                                    <?php if (!empty($proj['url'])): ?>
-                                        <a href="<?= htmlspecialchars($proj['url']) ?>" target="_blank" rel="noopener noreferrer" class="project-action-btn">
-                                            <span>Visit Live</span>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
-                                        </a>
-                                    <?php elseif (!empty($proj['github_repo'])): ?>
-                                        <a href="<?= htmlspecialchars($proj['github_repo']) ?>" target="_blank" rel="noopener noreferrer" class="project-action-btn">
-                                            <span>View Repository</span>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </section>
-
-        <!-- 4. Skills Section -->
-        <section id="skills" class="section section-alt">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-kicker">Technical Stack</span>
-                    <h2 class="section-title">Skills & Technologies</h2>
-                    <p class="section-subtitle">Structured by domains, from backend systems and database engines to client interfaces.</p>
-                </div>
-
-                <div class="skills-grid">
-                    <?php foreach ($skillsGrouped as $group): ?>
-                        <div class="skill-category-card">
-                            <div class="category-header">
-                                <h3 class="category-title"><?= htmlspecialchars($group['category_label'] ?? 'Skills') ?></h3>
-                                <span class="category-pill"><?= htmlspecialchars(ucfirst($group['skill_category'] ?? 'technical')) ?></span>
-                            </div>
-                            <div class="skill-chips">
-                                <?php foreach ($group['skills'] as $skill): ?>
-                                    <span class="skill-chip"><?= htmlspecialchars($skill) ?></span>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </section>
-
-        <!-- 5. Education & Certifications Section -->
-        <section id="education" class="section">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-kicker">Academic & Achievements</span>
-                    <h2 class="section-title">Education & Certifications</h2>
-                </div>
-
-                <div class="dual-column-grid">
-                    <!-- Education Column -->
-                    <div class="column-block">
-                        <div class="block-title-row">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-                            <h3 class="block-title">Formal Education</h3>
-                        </div>
-
-                        <?php foreach ($educations as $edu): ?>
-                            <div class="info-card">
-                                <div class="info-card-header">
-                                    <h4 class="card-headline"><?= htmlspecialchars($edu['school_name'] ?? '') ?></h4>
-                                    <span class="badge-subtle"><?= htmlspecialchars($edu['date_display'] ?? '') ?></span>
-                                </div>
-                                <div class="card-sub"><?= htmlspecialchars($edu['course'] ?? '') ?></div>
-                                <?php if (!empty($edu['location'])): ?>
-                                    <div class="card-meta"><?= htmlspecialchars($edu['location']) ?></div>
-                                <?php endif; ?>
-                                <?php if (!empty($edu['focus_areas'])): ?>
-                                    <div class="card-details">
-                                        <strong>Focus Areas:</strong> <?= htmlspecialchars($edu['focus_areas']) ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <!-- Certifications Column -->
-                    <div class="column-block">
-                        <div class="block-title-row">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
-                            <h3 class="block-title">Honors & Certifications</h3>
-                        </div>
-
-                        <?php foreach ($certificates as $cert): ?>
-                            <div class="info-card cert-card">
-                                <div class="info-card-header">
-                                    <h4 class="card-headline"><?= htmlspecialchars($cert['title'] ?? '') ?></h4>
-                                    <?php if (!empty($cert['date_display'])): ?>
-                                        <span class="badge-accent"><?= htmlspecialchars($cert['date_display']) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="card-sub"><?= htmlspecialchars($cert['issuer'] ?? '') ?></div>
-                                <p class="card-desc"><?= htmlspecialchars($cert['descripton'] ?? '') ?></p>
-                                
-                                <div class="cert-footer">
-                                    <?php if (!empty($cert['cert_id'])): ?>
-                                        <span class="cert-code">ID: <?= htmlspecialchars($cert['cert_id']) ?></span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($cert['cert_url'])): ?>
-                                        <a href="<?= htmlspecialchars($cert['cert_url']) ?>" target="_blank" rel="noopener noreferrer" class="cert-link">
-                                            <span>Verify Credential</span>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 6. Contact Section -->
-        <section id="contact" class="section section-alt">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-kicker">Initiate Collaboration</span>
-                    <h2 class="section-title">Get In Touch</h2>
-                    <p class="section-subtitle">Have a project in mind, interested in high-concurrency systems, or exploring full-time opportunities? Feel free to reach out.</p>
-                </div>
-
-                <!-- 2-Column Split: Directory List + Quick Message Form -->
-                <div class="contact-split-grid">
-                    <!-- Left: Direct Channels Directory -->
-                    <div class="contact-directory-card">
-                        <div class="contact-directory-header">
-                            <div>
-                                <h3 class="directory-title">Direct Channels</h3>
-                                <p class="directory-sub">Reach out directly via email, phone, or professional networks.</p>
-                            </div>
-                        </div>
-
-                        <div class="contact-list">
-                            <?php foreach ($contacts as $contact): 
-                                $nameLower = strtolower($contact['contact_name'] ?? '');
-                                $type = $contact['contact_type'] ?? '';
-                            ?>
-                                <div class="contact-row">
-                                    <div class="contact-row-left">
-                                        <div class="contact-row-icon">
-                                            <?php if ($type === 'email'): ?>
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                                            <?php elseif ($type === 'phone_no'): ?>
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                                            <?php elseif (str_contains($nameLower, 'linkedin')): ?>
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-                                            <?php elseif (str_contains($nameLower, 'github')): ?>
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-                                            <?php else: ?>
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="contact-row-text">
-                                            <div class="contact-row-label"><?= htmlspecialchars($contact['contact_name']) ?></div>
-                                            <div class="contact-row-value"><?= htmlspecialchars($contact['contact_info']) ?></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="contact-row-actions">
-                                        <?php if ($type === 'email'): ?>
-                                            <button type="button" class="btn-action copy-btn" data-copy="<?= htmlspecialchars($contact['contact_info']) ?>" title="Copy email address">
-                                                <span>Copy</span>
-                                            </button>
-                                            <a href="<?= htmlspecialchars($contact['href']) ?>" class="btn-action btn-action-primary">
-                                                <span>Write Email</span>
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
-                                            </a>
-                                        <?php elseif ($type === 'phone_no'): ?>
-                                            <a href="<?= htmlspecialchars($contact['href']) ?>" class="btn-action btn-action-primary">
-                                                <span>Call</span>
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
-                                            </a>
-                                        <?php elseif ($type === 'url' && !empty($contact['href']) && $contact['href'] !== '#'): ?>
-                                            <a href="<?= htmlspecialchars($contact['href']) ?>" target="_blank" rel="noopener noreferrer" class="btn-action btn-action-primary">
-                                                <span>Visit</span>
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="contact-row-badge">UTC+8 (PST)</span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-
-                    <!-- Right: Quick Message Form -->
-                    <div class="contact-form-card">
-                        <div class="contact-form-header">
-                            <h3 class="directory-title">Send a Direct Message</h3>
-                            <p class="directory-sub">Fill out the fields below for project inquiries or software consultations.</p>
-                        </div>
-
-                        <form class="contact-form" id="contactForm">
-                            <div class="form-row-2">
-                                <div class="form-group">
-                                    <label for="form_name" class="form-label">Your Name</label>
-                                    <input type="text" id="form_name" name="name" class="form-input" placeholder="e.g. Alex Rivera" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="form_email" class="form-label">Your Email</label>
-                                    <input type="email" id="form_email" name="email" class="form-input" placeholder="name@example.com" required>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="form_subject" class="form-label">Subject</label>
-                                <input type="text" id="form_subject" name="subject" class="form-input" placeholder="Project Inquiry / Job Opportunity" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="form_message" class="form-label">Message</label>
-                                <textarea id="form_message" name="message" class="form-textarea" rows="4" placeholder="Briefly describe what you have in mind..." required></textarea>
-                            </div>
-
-                            <div class="form-footer">
-                                <button type="submit" class="btn btn-primary btn-submit" id="contactSubmitBtn">
-                                    <span>Send Message</span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                </button>
-                                <div class="form-status" id="formStatus" aria-live="polite"></div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <!-- Dynamic Page Sections (Order & Visibility controlled by CMS) -->
+        <?php 
+        foreach ($activeSections as $sec): 
+            $sectionKey = $sec['section_key'] ?? '';
+            $sectionPath = __DIR__ . "/App/Views/sections/{$sectionKey}.php";
+            if (file_exists($sectionPath)):
+                include $sectionPath;
+            endif;
+        endforeach; 
+        ?>
     </main>
 
     <!-- Footer -->
-    <footer id="footer_main">
-        <div class="container footer-container">
-            <div class="footer-left">
-                <div class="footer-brand">&lt;<?= htmlspecialchars($fullName) ?>/&gt;</div>
-                <p class="footer-sub">Designed & built with clean vanilla PHP, CSS, and JavaScript. Prepared for custom CMS integration.</p>
-            </div>
-            <div class="footer-right">
-                <a href="#hero" class="back-to-top" id="backToTop">
-                    <span>Back to Top</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
-                </a>
-                <div class="copyright">&copy; <?= date('Y') ?> Jhon Clein Pagarogan. All rights reserved.</div>
-            </div>
-        </div>
-    </footer>
+    <?php include __DIR__ . '/App/Views/layout/footer.php'; ?>
 
     <script src="Public/js/main.js"></script>
 </body>
