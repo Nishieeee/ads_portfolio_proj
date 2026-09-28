@@ -492,6 +492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     await apiFetch(`/contact-info/${id}`, { method: 'DELETE' });
+                    alert(`Contact channel "${name}" deleted successfully!`);
                     showToast(`Contact channel "${name}" deleted successfully!`, 'success');
                     const row = deleteBtn.closest('.contact-row');
                     if (row) {
@@ -499,6 +500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => row.remove(), 250);
                     }
                 } catch (err) {
+                    alert(err.message || 'Failed to delete contact channel.');
                     showToast(err.message || 'Failed to delete contact channel.', 'error');
                 }
             }
@@ -651,6 +653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     await apiFetch(`/projects/${id}`, { method: 'DELETE' });
+                    alert(`Project "${name}" deleted successfully!`);
                     showToast(`Project "${name}" deleted successfully!`, 'success');
                     const row = deleteBtn.closest('.project-row');
                     if (row) {
@@ -658,6 +661,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => row.remove(), 250);
                     }
                 } catch (err) {
+                    alert(err.message || 'Failed to delete project.');
                     showToast(err.message || 'Failed to delete project.', 'error');
                 }
             }
@@ -835,6 +839,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     await apiFetch(`/experience/${id}`, { method: 'DELETE' });
+                    alert(`Experience "${name}" deleted successfully!`);
                     showToast(`Experience "${name}" deleted successfully!`, 'success');
                     const row = deleteBtn.closest('.experience-row');
                     if (row) {
@@ -842,6 +847,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => row.remove(), 250);
                     }
                 } catch (err) {
+                    alert(err.message || 'Failed to delete experience entry.');
                     showToast(err.message || 'Failed to delete experience entry.', 'error');
                 }
             }
@@ -1018,6 +1024,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     await apiFetch(`/skills/${id}`, { method: 'DELETE' });
+                    alert(`Skill category "${name}" deleted successfully!`);
                     showToast(`Skill category "${name}" deleted successfully!`, 'success');
                     const card = deleteBtn.closest('.skill-card');
                     if (card) {
@@ -1025,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => card.remove(), 250);
                     }
                 } catch (err) {
+                    alert(err.message || 'Failed to delete skill category.');
                     showToast(err.message || 'Failed to delete skill category.', 'error');
                 }
             }
@@ -1167,6 +1175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     await apiFetch(`/education/${id}`, { method: 'DELETE' });
+                    alert(`Education entry "${name}" deleted successfully!`);
                     showToast(`Education entry "${name}" deleted!`, 'success');
                     const row = deleteBtn.closest('.education-row');
                     if (row) {
@@ -1174,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => row.remove(), 250);
                     }
                 } catch (err) {
+                    alert(err.message || 'Failed to delete education entry.');
                     showToast(err.message || 'Failed to delete education entry.', 'error');
                 }
             }
@@ -1317,6 +1327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     await apiFetch(`/certificates/${id}`, { method: 'DELETE' });
+                    alert(`Certification "${name}" deleted successfully!`);
                     showToast(`Certification "${name}" deleted!`, 'success');
                     const row = deleteBtn.closest('.cert-row');
                     if (row) {
@@ -1324,6 +1335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => row.remove(), 250);
                     }
                 } catch (err) {
+                    alert(err.message || 'Failed to delete certification.');
                     showToast(err.message || 'Failed to delete certification.', 'error');
                 }
             }
@@ -1466,6 +1478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     await apiFetch(`/inquiries/${id}`, { method: 'DELETE' });
+                    alert(`Inquiry from "${name}" deleted successfully!`);
                     showToast('Inquiry deleted successfully!', 'success');
                     const row = deleteBtn.closest('.inquiry-row');
                     if (row) {
@@ -1473,6 +1486,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => row.remove(), 250);
                     }
                 } catch (err) {
+                    alert(err.message || 'Failed to delete inquiry.');
                     showToast(err.message || 'Failed to delete inquiry.', 'error');
                 }
             }
