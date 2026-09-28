@@ -109,14 +109,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 5. Contact Form Submission (Template Interaction)
+    // 5. Contact Form Submission (Live REST API Integration)
     const contactForm = document.getElementById('contactForm');
     const formStatus = document.getElementById('formStatus');
     const submitBtn = document.getElementById('contactSubmitBtn');
 
     if (contactForm && formStatus && submitBtn) {
-        contactForm.addEventListener('submit', (e) => {
+        // Resolve dynamic API Base URL
+        const API_BASE = (() => {
+            let path = window.location.pathname;
+            if (path.endsWith('.php') || path.endsWith('.html')) {
+                path = path.substring(0, path.lastIndexOf('/'));
+            }
+            return path.replace(/\/+$/, '') + '/api';
+        })();
+
+        contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const nameInput = document.getElementById('form_name');
+            const emailInput = document.getElementById('form_email');
+            const subjectInput = document.getElementById('form_subject');
+            const messageInput = document.getElementById('form_message');
+
+            const senderName = nameInput ? nameInput.value.trim() : '';
+            const senderEmail = emailInput ? emailInput.value.trim() : '';
+            const subject = subjectInput ? subjectInput.value.trim() : '';
+            const message = messageInput ? messageInput.value.trim() : '';
+
+            // Client-side validation
+            if (!senderName || !senderEmail || !subject || !message) {
+                formStatus.className = 'form-status error';
+                formStatus.textContent = 'Please fill in all required fields.';
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(senderEmail)) {
+                formStatus.className = 'form-status error';
+                formStatus.textContent = 'Please provide a valid email address.';
+                return;
+            }
+
+            if (message.length < 10) {
+                formStatus.className = 'form-status error';
+                formStatus.textContent = 'Message must be at least 10 characters long.';
+                return;
+            }
 
             const originalBtnHtml = submitBtn.innerHTML;
             submitBtn.disabled = true;
@@ -124,17 +163,44 @@ document.addEventListener('DOMContentLoaded', () => {
             formStatus.className = 'form-status';
             formStatus.textContent = '';
 
-            setTimeout(() => {
-                contactForm.reset();
+            try {
+                const response = await fetch(`${API_BASE}/inquiries`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sender_name: senderName,
+                        sender_email: senderEmail,
+                        subject: subject,
+                        message: message
+                    })
+                });
+
+                const data = await response.json().catch(() => null);
+
+                if (response.ok && data && data.status === 'success') {
+                    contactForm.reset();
+                    formStatus.className = 'form-status success';
+                    formStatus.textContent = data.message || 'Thank you! Your message has been sent successfully.';
+
+                    setTimeout(() => {
+                        formStatus.textContent = '';
+                    }, 6000);
+                } else {
+                    const errorMsg = (data && (data.message || data.error)) || 'Failed to submit inquiry. Please try again.';
+                    formStatus.className = 'form-status error';
+                    formStatus.textContent = errorMsg;
+                }
+            } catch (err) {
+                console.error('Contact form submission error:', err);
+                formStatus.className = 'form-status error';
+                formStatus.textContent = 'Network error. Please check your connection and try again.';
+            } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnHtml;
-                formStatus.className = 'form-status success';
-                formStatus.textContent = 'Message sent! (Ready for CMS integration)';
-
-                setTimeout(() => {
-                    formStatus.textContent = '';
-                }, 4000);
-            }, 600);
+            }
         });
     }
 });

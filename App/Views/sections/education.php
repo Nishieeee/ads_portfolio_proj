@@ -59,7 +59,7 @@ $title = !empty($sec['title']) ? $sec['title'] : 'Education & Certifications';
                             <?php endif; ?>
                         </div>
                         <div class="card-sub"><?= htmlspecialchars($cert['issuer'] ?? '') ?></div>
-                        <p class="card-desc"><?= htmlspecialchars($cert['descripton'] ?? '') ?></p>
+                        <p class="card-desc"><?= htmlspecialchars($cert['description'] ?? $cert['descripton'] ?? '') ?></p>
                         
                         <div class="cert-footer">
                             <?php if (!empty($cert['cert_id'])): ?>

@@ -4,30 +4,129 @@
  * Hybrid CMS Architecture: Dynamic Sections & Color Themes
  */
 
-// 1. Data Loader (Currently reads from portfolio_data.json, strictly mapped to portfolio_cms database)
-$dataPath = __DIR__ . '/portfolio_data.json';
-$portfolioData = [];
-if (file_exists($dataPath)) {
-    $portfolioData = json_decode(file_get_contents($dataPath), true) ?: [];
-}
+// 1. Data Loader (Live MySQL database with graceful JSON fallback)
+require_once __DIR__ . '/Config/database.php';
 
-// 2. Extract Data Entities
-$siteSettings = $portfolioData['site_settings'] ?? [
+$siteSettings = [
     'theme' => 'monochrome',
     'site_title' => 'Jhon Clein Pagarogan — Full-Stack Developer',
     'availability_badge' => 'Available for Select Projects & Full-Time Roles'
 ];
 
-$pageSections = $portfolioData['page_sections'] ?? [];
-$basicInfo    = $portfolioData['my_basic_info'] ?? [];
-$contacts     = $portfolioData['my_contact_info'] ?? [];
-$experiences  = $portfolioData['my_experience'] ?? [];
-$projects     = $portfolioData['my_projects'] ?? [];
-$skillsGrouped= $portfolioData['my_skills'] ?? [];
-$educations   = $portfolioData['my_education'] ?? [];
-$certificates = $portfolioData['my_certificates'] ?? [];
+$pageSections  = [];
+$basicInfo     = [];
+$contacts      = [];
+$experiences   = [];
+$projects      = [];
+$skillsGrouped = [];
+$educations    = [];
+$certificates  = [];
 
-// 3. Normalize Full Name
+try {
+    $database = new Database();
+    $db = $database->getConnection();
+    if ($db) {
+        $stmt = $db->query("SELECT * FROM site_settings WHERE id = 1 LIMIT 1");
+        $dbSettings = $stmt->fetch();
+        if ($dbSettings) $siteSettings = $dbSettings;
+
+        $stmt = $db->query("SELECT * FROM page_sections ORDER BY order_index ASC");
+        $pageSections = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_basic_info WHERE id = 1 LIMIT 1");
+        $basicInfo = $stmt->fetch() ?: [];
+        if (!empty($basicInfo['bio_paragraphs']) && is_string($basicInfo['bio_paragraphs'])) {
+            $decoded = json_decode($basicInfo['bio_paragraphs'], true);
+            if (is_array($decoded)) {
+                $basicInfo['bio_paragraphs'] = $decoded;
+            } else {
+                $basicInfo['bio_paragraphs'] = array_values(array_filter(array_map('trim', explode("\n\n", $basicInfo['bio_paragraphs']))));
+            }
+        }
+
+        $stmt = $db->query("SELECT * FROM my_contact_info ORDER BY id ASC");
+        $dbContacts = $stmt->fetchAll() ?: [];
+        foreach ($dbContacts as $c) {
+            $type = $c['contact_type'] ?? 'url';
+            $info = $c['contact_info'] ?? '';
+            $href = '#';
+            if ($type === 'email') {
+                $href = 'mailto:' . $info;
+            } elseif ($type === 'phone_no') {
+                $cleanPhone = preg_replace('/[^\d+]/', '', $info);
+                $href = 'tel:' . $cleanPhone;
+            } elseif ($type === 'url') {
+                $href = str_starts_with($info, 'http') ? $info : ('https://' . $info);
+            }
+            $c['href'] = $href;
+            $contacts[] = $c;
+        }
+
+        $stmt = $db->query("SELECT * FROM my_experience ORDER BY id ASC");
+        $experiences = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_projects ORDER BY id ASC");
+        $projects = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_skills ORDER BY id ASC");
+        $skillsRows = $stmt->fetchAll() ?: [];
+        foreach ($skillsRows as $row) {
+            $rawList = $row['skills_list'] ?? '';
+            $skillsArray = [];
+            $dec = json_decode($rawList, true);
+            if (is_array($dec)) {
+                $skillsArray = $dec;
+            } else {
+                $skillsArray = array_values(array_filter(array_map('trim', explode(',', $rawList))));
+            }
+            $skillsGrouped[] = [
+                'id' => (int)$row['id'],
+                'skill_category' => $row['skill_category'] ?? 'technical',
+                'category_label' => $row['category_label'] ?? '',
+                'skills' => $skillsArray,
+                'skills_list' => is_array($skillsArray) ? implode(', ', $skillsArray) : $rawList
+            ];
+        }
+
+        $stmt = $db->query("SELECT * FROM my_education ORDER BY id ASC");
+        $educations = $stmt->fetchAll() ?: [];
+
+        $stmt = $db->query("SELECT * FROM my_certificates ORDER BY id ASC");
+        $certificates = $stmt->fetchAll() ?: [];
+    }
+} catch (Throwable $e) {
+    // Graceful JSON fallback
+    $dataPath = __DIR__ . '/portfolio_data.json';
+    if (file_exists($dataPath)) {
+        $portfolioData = json_decode(file_get_contents($dataPath), true) ?: [];
+        $siteSettings   = $portfolioData['site_settings'] ?? $siteSettings;
+        $pageSections   = $portfolioData['page_sections'] ?? [];
+        $basicInfo      = $portfolioData['my_basic_info'] ?? [];
+        $contacts       = $portfolioData['my_contact_info'] ?? [];
+        $experiences    = $portfolioData['my_experience'] ?? [];
+        $projects       = $portfolioData['my_projects'] ?? [];
+        $educations     = $portfolioData['my_education'] ?? [];
+        $certificates   = $portfolioData['my_certificates'] ?? [];
+
+        foreach ($portfolioData['my_skills'] ?? [] as $k => $grp) {
+            $cat = $grp['skill_category'] ?? $grp['category'] ?? 'technical';
+            $lbl = $grp['category_label'] ?? $grp['label'] ?? '';
+            $rawSkills = $grp['skills'] ?? [];
+            if (is_string($rawSkills)) {
+                $rawSkills = array_values(array_filter(array_map('trim', explode(',', $rawSkills))));
+            }
+            $skillsGrouped[] = [
+                'id' => (int)($grp['id'] ?? ($k + 1)),
+                'skill_category' => $cat,
+                'category_label' => $lbl,
+                'skills' => $rawSkills,
+                'skills_list' => is_array($rawSkills) ? implode(', ', $rawSkills) : (string)$rawSkills
+            ];
+        }
+    }
+}
+
+// 2. Normalize Full Name
 $nameParts = array_filter([
     $basicInfo['first_name'] ?? 'Jhon Clein',
     $basicInfo['middle_name'] ?? '',
@@ -35,11 +134,11 @@ $nameParts = array_filter([
 ], fn($part) => trim($part) !== '');
 $fullName = implode(' ', $nameParts);
 
-// 4. Sort and Filter Active Page Sections (Hybrid CMS engine)
+// 3. Sort and Filter Active Page Sections (Hybrid CMS engine)
 $activeSections = array_filter($pageSections, fn($s) => !empty($s['is_visible']));
 usort($activeSections, fn($a, $b) => ($a['order_index'] ?? 0) <=> ($b['order_index'] ?? 0));
 
-$activeTheme = $siteSettings['theme'] ?? 'monochrome';
+$activeTheme = $_GET['theme'] ?? ($siteSettings['theme'] ?? 'monochrome');
 $pageTitle   = $siteSettings['site_title'] ?? ($fullName . ' — Full-Stack Developer');
 ?>
 <!DOCTYPE html>
