@@ -46,6 +46,9 @@ class PageSectionController extends BaseController {
      * @return void
      */
     public function update(int $id): void {
+        // Enforce admin authentication
+        $this->requireAuth();
+
         $section = $this->model->getById($id);
         if (!$section) {
             $this->sendError("Page section with ID {$id} not found.", [], 404);
@@ -75,6 +78,9 @@ class PageSectionController extends BaseController {
      * @return void
      */
     public function reorder(): void {
+        // Enforce admin authentication
+        $this->requireAuth();
+
         $input = $this->getJsonInput();
 
         // Support payload as either direct array or { "sections": [...] }
@@ -101,6 +107,9 @@ class PageSectionController extends BaseController {
      * @return void
      */
     public function toggleVisibility(int $id): void {
+        // Enforce admin authentication
+        $this->requireAuth();
+
         $section = $this->model->getById($id);
         if (!$section) {
             $this->sendError("Page section with ID {$id} not found.", [], 404);

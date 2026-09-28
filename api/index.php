@@ -22,8 +22,10 @@ require_once __DIR__ . '/../App/Models/Education.php';
 require_once __DIR__ . '/../App/Models/Project.php';
 require_once __DIR__ . '/../App/Models/Certificate.php';
 require_once __DIR__ . '/../App/Models/ContactInquiry.php';
+require_once __DIR__ . '/../App/Models/AdminUser.php';
 
 require_once __DIR__ . '/../App/Controller/BaseController.php';
+require_once __DIR__ . '/../App/Controller/AuthController.php';
 require_once __DIR__ . '/../App/Controller/SiteSettingController.php';
 require_once __DIR__ . '/../App/Controller/PageSectionController.php';
 require_once __DIR__ . '/../App/Controller/BasicInfoController.php';
@@ -56,6 +58,22 @@ $id = $segments[1] ?? null;
 
 // Router skeleton: to be implemented with core business logic
 switch ($resource) {
+    case 'auth':
+        $controller = new AuthController($db);
+        $action = $segments[1] ?? '';
+        if ($action === 'login' && $method === 'POST') {
+            $controller->login();
+        } elseif ($action === 'logout' && $method === 'POST') {
+            $controller->logout();
+        } elseif ($action === 'me' && $method === 'GET') {
+            $controller->me();
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Auth endpoint not found.']);
+            exit();
+        }
+        break;
+
     case 'settings':
         $controller = new SiteSettingController($db);
         break;

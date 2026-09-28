@@ -50,6 +50,7 @@ This document defines the complete RESTful API contract for the **Portfolio CMS*
 | **Education** | `App/Models/Education.php` | `App/Controller/EducationController.php` | `my_education` |
 | **Certificates** | `App/Models/Certificate.php` | `App/Controller/CertificateController.php` | `my_certificates` |
 | **Inquiries Inbox** | `App/Models/ContactInquiry.php` | `App/Controller/ContactInquiryController.php` | `contact_inquiries` |
+| **Admin Authentication** | `App/Models/AdminUser.php` | `App/Controller/AuthController.php` | `admin_users` |
 | **API Entrypoint** | N/A | `api/index.php` (Front Controller Router) | N/A |
 
 ---
@@ -403,3 +404,60 @@ Controls the hybrid dynamic view engine (drag/reorder, visibility toggle, custom
 #### `DELETE /api/inquiries/{id}` *(Admin Endpoint)*
 * **Description**: Remove an inquiry from the inbox.
 * **Controller**: `ContactInquiryController@delete`
+
+---
+
+### 3.10 Admin Authentication (`/api/auth`)
+
+#### `POST /api/auth/login`
+* **Description**: Authenticate admin with username and password, returning a 7-day Bearer token and user info.
+* **Controller**: `AuthController@login`
+* **Request Payload**:
+  ```json
+  {
+    "username": "admin",
+    "password": "adminpassword123"
+  }
+  ```
+* **Response** `200 OK`:
+  ```json
+  {
+    "success": true,
+    "message": "Login successful.",
+    "data": {
+      "token": "64_character_cryptographic_hex_token",
+      "user": {
+        "id": 1,
+        "username": "admin"
+      }
+    }
+  }
+  ```
+
+#### `POST /api/auth/logout`
+* **Description**: Invalidate active Bearer token and destroy current session.
+* **Controller**: `AuthController@logout`
+* **Headers**: `Authorization: Bearer <token>`
+* **Response** `200 OK`:
+  ```json
+  {
+    "success": true,
+    "message": "Logged out successfully."
+  }
+  ```
+
+#### `GET /api/auth/me`
+* **Description**: Verify active authentication status and retrieve current logged-in admin identity.
+* **Controller**: `AuthController@me`
+* **Headers**: `Authorization: Bearer <token>`
+* **Response** `200 OK`:
+  ```json
+  {
+    "success": true,
+    "message": "Authentication verified.",
+    "data": {
+      "id": 1,
+      "username": "admin"
+    }
+  }
+  ```

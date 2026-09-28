@@ -29,6 +29,9 @@ class SiteSettingController extends BaseController {
      * @return void
      */
     public function update(): void {
+        // Enforce admin authentication
+        $this->requireAuth();
+
         $input = $this->getJsonInput();
 
         if (empty($input)) {

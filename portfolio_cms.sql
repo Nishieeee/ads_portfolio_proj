@@ -113,6 +113,21 @@ CREATE TABLE IF NOT EXISTS contact_inquiries (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 11. Admin Authentication Users
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    auth_token VARCHAR(255) DEFAULT NULL,
+    token_expires_at DATETIME DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Initial Seed Data for Admin Account (Default username: admin, password: adminpassword123)
+INSERT INTO admin_users (username, password_hash) VALUES
+('admin', '$2y$12$901IyQtCIPVmvZ8xdnUTFeeY3Rmwf8HDieVajOLcsvnOFnex75OAe')
+ON DUPLICATE KEY UPDATE id = id;
+
 -- Initial Seed Data for Site Settings
 INSERT INTO site_settings (setting_key, setting_value) VALUES
 ('theme', 'monochrome'),
